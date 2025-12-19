@@ -25,7 +25,7 @@ This repository includes a validation workflow (`azure-oidc-check.yml`) that you
 Before you begin, ensure you have:
 
 - **Azure Subscription**: An active Azure subscription where you have appropriate permissions
-- **Azure CLI**: Installed locally for running commands ([Install Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli))
+- **Azure CLI**: Installed locally for running commands ([Install Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli))
 - **Azure Permissions**: Ability to create App Registrations and assign roles (typically requires Contributor or Owner role)
 - **GitHub Repository**: Admin access to the GitHub repository where you want to configure OIDC
 - **GitHub Repository Settings**: Ensure your repository has Actions enabled
@@ -46,10 +46,10 @@ Before you begin, ensure you have:
 
 3. **Create a Service Principal** for the app:
    ```bash
-   az ad sp create --id <appId>
+   az ad sp create --id $APP_ID
    ```
 
-   Replace `<appId>` with the Application (client) ID from step 2.
+   Note: Use the Application (client) ID from step 2. If you haven't set the `APP_ID` variable yet, you can do so now or replace `$APP_ID` with the actual value.
 
 4. **Retrieve your Tenant ID and Subscription ID**:
    ```bash
@@ -117,12 +117,17 @@ The service principal needs appropriate permissions to access Azure resources.
 
 1. **Assign a role to the service principal**:
    
+   First, set your subscription ID as a variable (if not already set):
+   ```bash
+   export SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+   ```
+   
    For read-only access:
    ```bash
    az role assignment create \
      --assignee $APP_ID \
      --role Reader \
-     --scope /subscriptions/<subscription-id>
+     --scope /subscriptions/$SUBSCRIPTION_ID
    ```
 
    For contributor access (allows resource creation/modification):
@@ -130,7 +135,7 @@ The service principal needs appropriate permissions to access Azure resources.
    az role assignment create \
      --assignee $APP_ID \
      --role Contributor \
-     --scope /subscriptions/<subscription-id>
+     --scope /subscriptions/$SUBSCRIPTION_ID
    ```
 
 2. **Verify role assignment**:
@@ -232,7 +237,7 @@ The workflow performs the following checks:
 
 ## Additional Resources
 
-- **Azure Documentation**: [Configure OpenID Connect in Azure](https://docs.microsoft.com/en-us/azure/developer/github/connect-from-azure)
+- **Azure Documentation**: [Configure OpenID Connect in Azure](https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure)
 - **GitHub Documentation**: [Security hardening with OpenID Connect](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect)
 - **azure/login Action**: [GitHub Marketplace](https://github.com/marketplace/actions/azure-login)
 - **README**: See the [Post-Creation Checklist](../README.md#post-creation-checklist) for context on when to configure Azure OIDC
