@@ -245,7 +245,6 @@ The workflow performs the following checks:
 
 ---
 
-**Need Help?** If you encounter issues not covered in this guide, consider:
-- Reviewing Azure AD App Registration and Federated Credentials in Azure Portal
-- Checking GitHub Actions workflow logs for detailed error messages
-- Consulting the Azure CLI documentation for specific commands
+## Documentation Test Status
+
+Last successfully tested: Not tested yet
