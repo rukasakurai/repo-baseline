@@ -42,14 +42,15 @@ Before you begin, ensure you have:
    az ad app create --display-name "GitHub-OIDC-YourRepoName"
    ```
 
-   Take note of the `appId` (also called Client ID) from the output.
+   Take note of the `appId` (also called Client ID) from the output, then set it as an environment variable:
+   ```bash
+   export APP_ID="<your-app-id-from-output>"
+   ```
 
 3. **Create a Service Principal** for the app:
    ```bash
    az ad sp create --id $APP_ID
    ```
-
-   Note: Use the Application (client) ID from step 2. If you haven't set the `APP_ID` variable yet, you can do so now or replace `$APP_ID` with the actual value.
 
 4. **Retrieve your Tenant ID and Subscription ID**:
    ```bash
