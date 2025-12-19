@@ -28,6 +28,6 @@ After creating a repository from this template:
   - `AZURE_TENANT_ID`
   - `AZURE_SUBSCRIPTION_ID`
   
-  Then run the "Azure OIDC Connectivity Check" workflow manually to verify the configuration.
+  See [docs/azure-oidc-setup.md](docs/azure-oidc-setup.md) for detailed setup instructions. Then run the "Azure OIDC Connectivity Check" workflow manually to verify the configuration.
 - [ ] **Update README.md** - Replace this generic template README with repository-specific documentation
 - [ ] **Review AGENTS.md** - Update or remove this file to reflect your repository's specific purpose and conventions
