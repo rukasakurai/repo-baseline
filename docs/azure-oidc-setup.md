@@ -6,7 +6,7 @@ This guide provides step-by-step instructions for configuring Azure OpenID Conne
 
 - [Overview](#overview)
 - [Prerequisites](#prerequisites)
-- [Step 1: Create Azure AD App Registration](#step-1-create-azure-ad-app-registration)
+- [Step 1: Create Microsoft Entra ID (Azure AD) App Registration](#step-1-create-microsoft-entra-id-azure-ad-app-registration)
 - [Step 2: Configure Federated Credentials](#step-2-configure-federated-credentials)
 - [Step 3: Assign Azure Permissions](#step-3-assign-azure-permissions)
 - [Step 4: Configure GitHub Repository Secrets](#step-4-configure-github-repository-secrets)
@@ -18,23 +18,33 @@ This guide provides step-by-step instructions for configuring Azure OpenID Conne
 
 Azure OIDC allows GitHub Actions workflows to authenticate with Azure without storing long-lived credentials as secrets. Instead, GitHub Actions exchanges a short-lived token with Azure using OpenID Connect, providing enhanced security.
 
-This repository includes a validation workflow (`azure-oidc-check.yml`) that you can use to verify your OIDC configuration is working correctly.
+This repository includes a validation workflow (`.github/workflows/azure-oidc-check.yml`) that you can use to verify your OIDC configuration is working correctly.
 
 ## Prerequisites
 
 Before you begin, ensure you have:
 
 - **Azure Subscription**: An active Azure subscription where you have appropriate permissions
-- **Azure CLI**: Installed locally for running commands ([Install Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli))
-- **Azure Permissions**: Ability to create App Registrations and assign roles (typically requires Contributor or Owner role)
+- **Azure CLI**: Installed locally for running commands ([Install Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli)). Verify with `az version`.
+- **Azure Permissions**: Ability to create app registrations (Microsoft Entra ID) and assign roles (typically requires Contributor or Owner role)
 - **GitHub Repository**: Admin access to the GitHub repository where you want to configure OIDC
 - **GitHub Repository Settings**: Ensure your repository has Actions enabled
 
-## Step 1: Create Azure AD App Registration
+## Step 1: Create Microsoft Entra ID (Azure AD) App Registration
 
-1. **Sign in to Azure Portal**:
+1. **Sign in to Azure using the Azure CLI** (manual step):
    ```bash
    az login
+   ```
+
+   If you have multiple tenants, or your organization requires explicit tenant scoping:
+   ```bash
+   az login --tenant "<your-tenant-id>"
+   ```
+
+   After login, ensure you're targeting the right subscription:
+   ```bash
+   az account set --subscription "<your-subscription-id>"
    ```
 
 2. **Create a new App Registration**:
@@ -45,6 +55,11 @@ Before you begin, ensure you have:
    Take note of the `appId` (also called Client ID) from the output, then set it as an environment variable:
    ```bash
    export APP_ID="<your-app-id-from-output>"
+   ```
+
+   PowerShell:
+   ```powershell
+   $env:APP_ID = "<your-app-id-from-output>"
    ```
 
 3. **Create a Service Principal** for the app:
@@ -67,11 +82,20 @@ Before you begin, ensure you have:
 
 Federated credentials establish the trust relationship between GitHub and Azure.
 
+> Note: The `issuer` value must match GitHub's `iss` claim exactly. GitHub issues tokens with `iss` set to `https://token.actions.githubusercontent.com` (no trailing slash).
+
 1. **Set environment variables** for easier configuration (if continuing from Step 1 in the same terminal session, `APP_ID` should already be set):
    ```bash
    export APP_ID="<your-app-id>"
    export GITHUB_ORG="<your-github-org>"
    export GITHUB_REPO="<your-repo-name>"
+   ```
+
+   PowerShell:
+   ```powershell
+   $env:APP_ID = "<your-app-id>"
+   $env:GITHUB_ORG = "<your-github-org>"
+   $env:GITHUB_REPO = "<your-repo-name>"
    ```
 
 2. **Create a federated credential** for the main branch:
@@ -85,6 +109,19 @@ Federated credentials establish the trust relationship between GitHub and Azure.
        "audiences": ["api://AzureADTokenExchange"]
      }'
    ```
+
+    PowerShell:
+    ```powershell
+    $subject = "repo:$env:GITHUB_ORG/$env:GITHUB_REPO:ref:refs/heads/main"
+    $payload = @{
+       name      = "github-federated-credential"
+       issuer    = "https://token.actions.githubusercontent.com"
+       subject   = $subject
+       audiences = @("api://AzureADTokenExchange")
+    } | ConvertTo-Json -Depth 4
+
+    az ad app federated-credential create --id $env:APP_ID --parameters $payload
+    ```
 
 3. **(Optional) Add federated credentials for other branches or environments**:
    
@@ -100,6 +137,19 @@ Federated credentials establish the trust relationship between GitHub and Azure.
      }'
    ```
 
+    PowerShell:
+    ```powershell
+    $subject = "repo:$env:GITHUB_ORG/$env:GITHUB_REPO:pull_request"
+    $payload = @{
+       name      = "github-pr-credential"
+       issuer    = "https://token.actions.githubusercontent.com"
+       subject   = $subject
+       audiences = @("api://AzureADTokenExchange")
+    } | ConvertTo-Json -Depth 4
+
+    az ad app federated-credential create --id $env:APP_ID --parameters $payload
+    ```
+
    For specific environments:
    ```bash
    az ad app federated-credential create \
@@ -112,6 +162,19 @@ Federated credentials establish the trust relationship between GitHub and Azure.
      }'
    ```
 
+    PowerShell:
+    ```powershell
+    $subject = "repo:$env:GITHUB_ORG/$env:GITHUB_REPO:environment:production"
+    $payload = @{
+       name      = "github-env-credential"
+       issuer    = "https://token.actions.githubusercontent.com"
+       subject   = $subject
+       audiences = @("api://AzureADTokenExchange")
+    } | ConvertTo-Json -Depth 4
+
+    az ad app federated-credential create --id $env:APP_ID --parameters $payload
+    ```
+
 ## Step 3: Assign Azure Permissions
 
 The service principal needs appropriate permissions to access Azure resources.
@@ -122,26 +185,67 @@ The service principal needs appropriate permissions to access Azure resources.
    ```bash
    export SUBSCRIPTION_ID=$(az account show --query id -o tsv)
    ```
+
+   PowerShell:
+   ```powershell
+   $env:SUBSCRIPTION_ID = (az account show --query id -o tsv)
+   ```
    
    For read-only access:
+   
+    First, capture the service principal **object id** (recommended for role assignments):
+    ```bash
+    export SP_OBJECT_ID=$(az ad sp show --id $APP_ID --query id -o tsv)
+    ```
+
+    PowerShell:
+    ```powershell
+    $env:SP_OBJECT_ID = (az ad sp show --id $env:APP_ID --query id -o tsv)
+    ```
+
    ```bash
    az role assignment create \
-     --assignee $APP_ID \
+       --assignee-object-id $SP_OBJECT_ID \
+       --assignee-principal-type ServicePrincipal \
      --role Reader \
      --scope /subscriptions/$SUBSCRIPTION_ID
    ```
 
+    PowerShell:
+    ```powershell
+    az role assignment create `
+       --assignee-object-id $env:SP_OBJECT_ID `
+       --assignee-principal-type ServicePrincipal `
+       --role Reader `
+       --scope "/subscriptions/$env:SUBSCRIPTION_ID"
+    ```
+
    For contributor access (allows resource creation/modification):
    ```bash
    az role assignment create \
-     --assignee $APP_ID \
+       --assignee-object-id $SP_OBJECT_ID \
+       --assignee-principal-type ServicePrincipal \
      --role Contributor \
      --scope /subscriptions/$SUBSCRIPTION_ID
    ```
 
+    PowerShell:
+    ```powershell
+    az role assignment create `
+       --assignee-object-id $env:SP_OBJECT_ID `
+       --assignee-principal-type ServicePrincipal `
+       --role Contributor `
+       --scope "/subscriptions/$env:SUBSCRIPTION_ID"
+    ```
+
 2. **Verify role assignment**:
    ```bash
-   az role assignment list --assignee $APP_ID --output table
+   az role assignment list --assignee-object-id $SP_OBJECT_ID --output table
+   ```
+
+   PowerShell:
+   ```powershell
+   az role assignment list --assignee-object-id $env:SP_OBJECT_ID --output table
    ```
 
 ## Step 4: Configure GitHub Repository Secrets
@@ -156,8 +260,8 @@ Add the following secrets to your GitHub repository:
 
    | Secret Name | Description | How to Get |
    |------------|-------------|------------|
-   | `AZURE_CLIENT_ID` | Application (client) ID | From Step 1, or run `echo $APP_ID` |
-   | `AZURE_TENANT_ID` | Azure AD Tenant ID | From Step 1, or run `az account show --query tenantId -o tsv` |
+   | `AZURE_CLIENT_ID` | Application (client) ID | From Step 1, or print `APP_ID` |
+   | `AZURE_TENANT_ID` | Microsoft Entra tenant ID | From Step 1, or run `az account show --query tenantId -o tsv` |
    | `AZURE_SUBSCRIPTION_ID` | Azure Subscription ID | From Step 1, or run `az account show --query id -o tsv` |
 
 3. **Click "New repository secret"** for each value and enter:
@@ -214,7 +318,7 @@ The workflow performs the following checks:
 **Cause**: The service principal doesn't have sufficient permissions.
 
 **Solution**:
-- Verify role assignments: `az role assignment list --assignee $APP_ID`
+- Verify role assignments: `az role assignment list --assignee-object-id $SP_OBJECT_ID`
 - Ensure the service principal has at least Reader role on the subscription
 - Wait a few minutes after creating role assignments (propagation delay)
 
