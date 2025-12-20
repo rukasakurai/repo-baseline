@@ -14,6 +14,16 @@ Test the Markdown file: **${input:markdownFile:README.md}**
 
 ## Instructions
 
+### Non-Negotiables (must follow)
+
+1. **Execute in order**: Treat the Markdown file as an ordered procedure. Start at the top and execute every step sequentially.
+2. **Execute, don’t simulate**: Every command/code snippet must be run in the provided environment unless it is explicitly marked as manual/GUI-only.
+3. **Manual/GUI/auth steps are blocking**: The moment a step requires user action (login, portal clicks, secrets entry, approvals), stop and hand back to the user with: "Please complete X and reply 'done'."
+  - Do not proceed to later steps until the user replies "done".
+4. **Destructive steps require explicit confirmation**: If a step creates/changes/deletes external resources (cloud resources, RBAC, app registrations, billing-impacting actions), ask the user to confirm before running it.
+5. **Record evidence**: For each executed command, record: the exact command run, whether it succeeded, and key output needed to validate the step.
+6. **Accurate environment reporting**: Use the actual environment context (OS + shell) from the current session; do not guess.
+
 1. **Read and Analyze**: 
    - Carefully read through the entire Markdown file specified above
    - Identify all step-by-step instructions, commands, and procedures
@@ -24,7 +34,8 @@ Test the Markdown file: **${input:markdownFile:README.md}**
    - Verify that versions referenced are still supported and not deprecated
    - Check if any recommended practices have been superseded by newer approaches
    - Identify any deprecated commands, APIs, or methodologies
-   - **Update the target Markdown file** to fix any outdated content found:
+   - **Do not edit yet**: only note suspected outdated items at this stage.
+   - **After execution attempts**, update the target Markdown file to fix any outdated content found:
      - Replace deprecated commands with current alternatives
      - Update version numbers to latest stable versions
      - Replace outdated practices with current recommended approaches
@@ -32,14 +43,20 @@ Test the Markdown file: **${input:markdownFile:README.md}**
    - Document all updates made in your final report
 
 3. **Execute Steps**:
-   - Follow each instruction in the Markdown file sequentially
-   - **Actually execute** every command or code snippet as documented - do not just validate syntax
-   - Verify that each step produces the expected results
+   - Follow each instruction in the Markdown file sequentially (no re-ordering)
+   - For each step:
+     - Quote the step you are executing (short excerpt)
+     - Run the commands exactly as written
+     - Verify the expected outcome (or capture the actual outcome)
+     - If it fails due to doc error, apply the smallest possible fix in the Markdown and rerun
    - **For steps requiring manual intervention** (authentication, GUI operations, user-specific input):
      - Document which step requires manual action
      - **Hand back to the user** with clear instructions: "Please complete [specific action] and reply 'done' when ready"
      - **Wait for user confirmation** before proceeding to next steps
      - Mark these steps as "Requires Manual Intervention" in your report
+   - **For steps that modify external resources** (creating apps/SPs, role assignments, resource creation):
+     - Ask for explicit user confirmation before running them
+     - If not confirmed, mark the step as "Requires Manual Intervention" and stop
    - Pay attention to:
      - Command syntax and correctness
      - Actual command execution and output
@@ -94,6 +111,8 @@ Test the Markdown file: **${input:markdownFile:README.md}**
 - **Execute, don't just validate**: Actually run commands and verify outputs, don't just check syntax
 - **Request user help proactively**: When encountering authentication, GUI steps, or user-specific configuration, immediately hand back to the user with clear instructions
 - **Test in context**: Use the actual environment available (dev container, installed tools, etc.)
+- **Stop on blockers**: Do not continue past a blocking manual step until the user replies "done".
+- **Prefer minimal edits**: Fix only what prevents correct execution and accuracy.
 - Document any assumptions made during testing
 - Verify that prerequisites listed in the file are accurate and sufficient
 - Check for consistency with other documentation in the repository
@@ -142,6 +161,9 @@ Provide your test results in the following format:
 
 #### Recommendations
 - [Any suggestions for improving the documentation]
+
+#### Execution Log (Required)
+- [Step-by-step list of each command you ran and whether it succeeded]
 ```
 
 ## Notes
