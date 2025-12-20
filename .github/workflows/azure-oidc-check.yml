@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Check for required secrets
+      - name: Check required repo config
         run: |
-          if [ -z "${{ secrets.AZURE_CLIENT_ID }}" ]; then
-            echo "❌ AZURE_CLIENT_ID secret is not configured"
+          if [ -z "${{ vars.AZURE_CLIENT_ID }}" ]; then
+            echo "❌ AZURE_CLIENT_ID repository variable is not configured"
             exit 1
           fi
           if [ -z "${{ secrets.AZURE_TENANT_ID }}" ]; then
@@ -26,12 +26,12 @@ jobs:
             echo "❌ AZURE_SUBSCRIPTION_ID secret is not configured"
             exit 1
           fi
-          echo "✅ All required secrets are configured"
+          echo "✅ Required repo config is configured"
       
       - name: Azure Login via OIDC
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       

@@ -23,6 +23,12 @@ Test the Markdown file: **${input:markdownFile:README.md}**
 4. **Destructive steps require explicit confirmation**: If a step creates/changes/deletes external resources (cloud resources, RBAC, app registrations, billing-impacting actions), ask the user to confirm before running it.
 5. **Record evidence**: For each executed command, record: the exact command run, whether it succeeded, and key output needed to validate the step.
 6. **Accurate environment reporting**: Use the actual environment context (OS + shell) from the current session; do not guess.
+  - The `OS:` field must include a specific version (and build where applicable), e.g. `Windows 11 23H2 (build 22631.XXXX)`.
+  - The `Shell:` field must include shell name **and** version/edition where applicable, e.g. `PowerShell 7.4.1 (Core)` vs `Windows PowerShell 5.1 (Desktop)`.
+  - Record evidence for how you determined OS/shell details (for example, `winver` / `ver`, `$PSVersionTable`, `bash --version | head -n 1`).
+7. **Accurate attribution**: If the run included any manual/GUI/auth steps, do not imply it was fully automated.
+  - Keep the `Tester:` line in the required schema, but reflect reality in its value (e.g., `Automated Documentation Tester (with human intervention)`), and/or clearly state the human steps in `Notes:`.
+  - `Notes:` must explicitly list what the human did (e.g., "entered repo variables/secrets", "approved RBAC assignment", "clicked Run workflow").
 
 1. **Read and Analyze**: 
    - Carefully read through the entire Markdown file specified above
@@ -94,11 +100,13 @@ Test the Markdown file: **${input:markdownFile:README.md}**
       ### YYYY-MM-DD
       - Result: PASS / PASS with manual steps / PASS with fixes / PARTIAL / FAIL
       - Platform/Context: [e.g., Microsoft Surface Laptop X, GitHub Codespaces (Dev Container), Azure Cloud Shell]
-      - OS: [Operating System and version]
-      - Shell: [Shell type]
-      - Tester: Automated Documentation Tester
+      - OS: [Operating System and version/build]
+      - Shell: [Shell name + version/edition]
+        - Tester: Automated Documentation Tester
       - Notes: [Optional: Key findings or manual steps required]
       ```
+
+      - If there was any human intervention, keep the `Tester:` key but update the value to reflect that (for example: `Automated Documentation Tester (with human intervention)`) and describe the human steps in `Notes:`.
 
 6. **Report Results**:
    - Summarize which steps passed and which failed

@@ -9,7 +9,7 @@ This guide provides step-by-step instructions for configuring Azure OpenID Conne
 - [Step 1: Create Microsoft Entra ID (Azure AD) App Registration](#step-1-create-microsoft-entra-id-azure-ad-app-registration)
 - [Step 2: Configure Federated Credentials](#step-2-configure-federated-credentials)
 - [Step 3: Assign Azure Permissions](#step-3-assign-azure-permissions)
-- [Step 4: Configure GitHub Repository Secrets](#step-4-configure-github-repository-secrets)
+- [Step 4: Configure GitHub Repository Variables and Secrets](#step-4-configure-github-repository-variables-and-secrets)
 - [Step 5: Verify Configuration](#step-5-verify-configuration)
 - [Troubleshooting](#troubleshooting)
 - [Additional Resources](#additional-resources)
@@ -35,6 +35,11 @@ Before you begin, ensure you have:
 1. **Sign in to Azure using the Azure CLI** (manual step):
    ```bash
    az login
+   ```
+
+   If your organization uses Conditional Access and interactive browser login is blocked, use device code login:
+   ```bash
+   az login --use-device-code
    ```
 
    If you have multiple tenants, or your organization requires explicit tenant scoping:
@@ -67,6 +72,11 @@ Before you begin, ensure you have:
    az ad sp create --id $APP_ID
    ```
 
+   PowerShell:
+   ```powershell
+   az ad sp create --id $env:APP_ID
+   ```
+
 4. **Retrieve your Tenant ID and Subscription ID**:
    ```bash
    # Get Tenant ID
@@ -76,7 +86,7 @@ Before you begin, ensure you have:
    az account show --query id -o tsv
    ```
 
-   Save these values - you'll need them for GitHub secrets configuration.
+   Save these values - you'll need them for GitHub Actions variables/secrets configuration.
 
 ## Step 2: Configure Federated Credentials
 
@@ -100,8 +110,12 @@ Federated credentials establish the trust relationship between GitHub and Azure.
 
 2. **Create a federated credential** for the main branch:
    ```bash
+    # Azure CLI expects the *application object id* for federated-credential operations.
+    # (The app's client id is $APP_ID; the object id is a different GUID.)
+    APP_OBJECT_ID=$(az ad app show --id "$APP_ID" --query id -o tsv)
+
    az ad app federated-credential create \
-     --id $APP_ID \
+          --id "$APP_OBJECT_ID" \
      --parameters '{
        "name": "github-federated-credential",
        "issuer": "https://token.actions.githubusercontent.com",
@@ -110,25 +124,39 @@ Federated credentials establish the trust relationship between GitHub and Azure.
      }'
    ```
 
-    PowerShell:
-    ```powershell
-    $subject = "repo:$env:GITHUB_ORG/$env:GITHUB_REPO:ref:refs/heads/main"
-    $payload = @{
-       name      = "github-federated-credential"
-       issuer    = "https://token.actions.githubusercontent.com"
-       subject   = $subject
-       audiences = @("api://AzureADTokenExchange")
-    } | ConvertTo-Json -Depth 4
+   PowerShell:
+   ```powershell
+   # Azure CLI expects the *application object id* for federated-credential operations.
+   # (The app's client id is $env:APP_ID; the object id is a different GUID.)
+   $env:APP_OBJECT_ID = (az ad app show --id $env:APP_ID --query id -o tsv)
 
-    az ad app federated-credential create --id $env:APP_ID --parameters $payload
-    ```
+   $subject = "repo:$env:GITHUB_ORG/$env:GITHUB_REPO:ref:refs/heads/main"
+   $payload = @{
+      name      = "github-federated-credential"
+      issuer    = "https://token.actions.githubusercontent.com"
+      subject   = $subject
+      audiences = @("api://AzureADTokenExchange")
+   } | ConvertTo-Json -Depth 4
+
+   az ad app federated-credential create --id $env:APP_OBJECT_ID --parameters $payload
+   ```
+
+      > Note: If PowerShell JSON quoting causes errors, write `$payload` to a temp file and pass the file path:
+      > ```powershell
+      > $jsonPath = Join-Path $env:TEMP 'federated-credential.json'
+      > $payload | Set-Content -Path $jsonPath -Encoding utf8
+      > az ad app federated-credential create --id $env:APP_OBJECT_ID --parameters $jsonPath
+      > Remove-Item -Path $jsonPath
+      > ```
 
 3. **(Optional) Add federated credentials for other branches or environments**:
    
    For pull requests:
    ```bash
+    APP_OBJECT_ID=$(az ad app show --id "$APP_ID" --query id -o tsv)
+
    az ad app federated-credential create \
-     --id $APP_ID \
+       --id "$APP_OBJECT_ID" \
      --parameters '{
        "name": "github-pr-credential",
        "issuer": "https://token.actions.githubusercontent.com",
@@ -147,13 +175,15 @@ Federated credentials establish the trust relationship between GitHub and Azure.
        audiences = @("api://AzureADTokenExchange")
     } | ConvertTo-Json -Depth 4
 
-    az ad app federated-credential create --id $env:APP_ID --parameters $payload
+      az ad app federated-credential create --id $env:APP_OBJECT_ID --parameters $payload
     ```
 
    For specific environments:
    ```bash
+    APP_OBJECT_ID=$(az ad app show --id "$APP_ID" --query id -o tsv)
+
    az ad app federated-credential create \
-     --id $APP_ID \
+       --id "$APP_OBJECT_ID" \
      --parameters '{
        "name": "github-env-credential",
        "issuer": "https://token.actions.githubusercontent.com",
@@ -172,7 +202,7 @@ Federated credentials establish the trust relationship between GitHub and Azure.
        audiences = @("api://AzureADTokenExchange")
     } | ConvertTo-Json -Depth 4
 
-    az ad app federated-credential create --id $env:APP_ID --parameters $payload
+      az ad app federated-credential create --id $env:APP_OBJECT_ID --parameters $payload
     ```
 
 ## Step 3: Assign Azure Permissions
@@ -248,28 +278,38 @@ The service principal needs appropriate permissions to access Azure resources.
    az role assignment list --assignee-object-id $env:SP_OBJECT_ID --output table
    ```
 
-## Step 4: Configure GitHub Repository Secrets
+## Step 4: Configure GitHub Repository Variables and Secrets
 
-Add the following secrets to your GitHub repository:
+These values are **identifiers**, not credentials:
+- `AZURE_CLIENT_ID` (app/client ID), `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID` are not passwords or tokens.
+- Azure OIDC security does **not** depend on keeping these values secret.
+- In other words: **none of these values need to be stored as secrets** for OIDC to be secure.
+
+That said, you may still choose to store any or all of them as GitHub **secrets** for defense-in-depth (for example, to reduce accidental exposure of environment metadata in logs or screenshots).
+
+This repository’s workflow is set up to use:
+- `AZURE_CLIENT_ID` as a GitHub Actions **repository variable** (non-secret)
+- `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` as GitHub Actions **repository secrets**
 
 1. **Navigate to GitHub Repository Settings**:
    - Go to your repository on GitHub
    - Click **Settings** → **Secrets and variables** → **Actions**
 
-2. **Add the following repository secrets**:
+2. **Add the following repository variable / secrets**:
 
-   | Secret Name | Description | How to Get |
-   |------------|-------------|------------|
-   | `AZURE_CLIENT_ID` | Application (client) ID | From Step 1, or print `APP_ID` |
-   | `AZURE_TENANT_ID` | Microsoft Entra tenant ID | From Step 1, or run `az account show --query tenantId -o tsv` |
-   | `AZURE_SUBSCRIPTION_ID` | Azure Subscription ID | From Step 1, or run `az account show --query id -o tsv` |
+   | Name | Type | Description | How to Get |
+   |------|------|-------------|------------|
+   | `AZURE_CLIENT_ID` | Variable | Application (client) ID | From Step 1, or print `APP_ID` |
+   | `AZURE_TENANT_ID` | Secret | Microsoft Entra tenant ID | From Step 1, or run `az account show --query tenantId -o tsv` |
+   | `AZURE_SUBSCRIPTION_ID` | Secret | Azure Subscription ID | From Step 1, or run `az account show --query id -o tsv` |
 
-3. **Click "New repository secret"** for each value and enter:
-   - **Name**: The secret name (e.g., `AZURE_CLIENT_ID`)
-   - **Value**: The corresponding value from your Azure configuration
-   - Click **Add secret**
+3. **Create the variable + secrets**:
+   - For `AZURE_CLIENT_ID`: click **Variables** → **New repository variable**
+   - For `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID`: click **Secrets** → **New repository secret**
 
-> ⚠️ **Important**: Never commit these values to your repository or share them publicly.
+> ⚠️ **Important**: These values are identifiers (not credentials), but you should still avoid committing environment-specific IDs to your repository. Store them in GitHub Actions variables/secrets to keep the repo reusable and to avoid leaking tenant/subscription metadata.
+
+> Optional: If you prefer storing `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` as **variables** instead of secrets, update the workflow to use `vars.AZURE_TENANT_ID` and `vars.AZURE_SUBSCRIPTION_ID` (and update the “required repo config” checks accordingly).
 
 ## Step 5: Verify Configuration
 
@@ -286,7 +326,7 @@ This repository includes a workflow to validate your Azure OIDC configuration.
    - ❌ If it fails, check the [Troubleshooting](#troubleshooting) section below
 
 The workflow performs the following checks:
-- Verifies all required secrets are configured
+- Verifies required GitHub Actions variables/secrets are configured
 - Attempts to authenticate with Azure using OIDC
 - Runs `az account show` to confirm connectivity
 
@@ -304,14 +344,15 @@ The workflow performs the following checks:
 - Ensure you're running the workflow from the branch specified in the credential
 - Check for typos in organization or repository name
 
-### Error: "AZURE_CLIENT_ID secret is not configured"
+### Error: "AZURE_CLIENT_ID repository variable is not configured"
 
-**Cause**: Required secrets are missing from GitHub repository settings.
+**Cause**: Required GitHub Actions variable is missing.
 
 **Solution**:
 - Go to Repository Settings → Secrets and variables → Actions
-- Verify all three secrets exist: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
-- Ensure secret names match exactly (case-sensitive)
+- Verify the variable exists: `AZURE_CLIENT_ID`
+- Verify the secrets exist: `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
+- Ensure names match exactly (case-sensitive)
 
 ### Error: "Authorization failed"
 
@@ -352,7 +393,15 @@ The workflow performs the following checks:
 - Result: PARTIAL
 - Platform/Context: GitHub Codespaces (Dev Container)
 - OS: Ubuntu 24.04.3 LTS
-- Shell: bash
-- Tester: Automated Documentation Tester
+- Shell: bash (version not captured)
+- Tester: Automated Documentation Tester (with human intervention)
 - Notes: `az login` blocked by org access policy/Conditional Access; requires manual sign-in (for example `az login --use-device-code`) before remaining steps can be executed.
+
+### 2025-12-20
+- Result: PASS with fixes
+- Platform/Context: Local machine
+- OS: Microsoft Windows (Version 10.0.26200.7392)
+- Shell: PowerShell 7.5.4 (Core)
+- Tester: Automated Documentation Tester (with human intervention)
+- Notes: Completed Entra app + service principal creation, federated credential creation (required using application object id in `az ad app federated-credential`), Reader RBAC assignment, and successfully ran the "Azure OIDC Connectivity Check" workflow. Human steps: authenticated `az login`, configured GitHub Actions variable/secret values in the repo settings UI, and clicked "Run workflow".
 
