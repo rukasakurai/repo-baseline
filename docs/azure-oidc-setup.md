@@ -67,7 +67,7 @@ Before you begin, ensure you have:
 
 Federated credentials establish the trust relationship between GitHub and Azure.
 
-1. **Set environment variables** for easier configuration:
+1. **Set environment variables** for easier configuration (if continuing from Step 1 in the same terminal session, `APP_ID` should already be set):
    ```bash
    export APP_ID="<your-app-id>"
    export GITHUB_ORG="<your-github-org>"
