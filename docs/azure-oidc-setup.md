@@ -245,6 +245,5 @@ The workflow performs the following checks:
 
 ---
 
-## Documentation Test Status
+## Documentation Test History
 
-Last successfully tested: Not tested yet
