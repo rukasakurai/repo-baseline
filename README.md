@@ -24,9 +24,9 @@ After creating a repository from this template:
 
 - [ ] **Choose and add a LICENSE file** - This template intentionally omits a license; add one appropriate for your project
 - [ ] **Configure Azure OIDC** (if using Azure) - Set up federated credentials and add the following repository secrets:
-  - `AZURE_CLIENT_ID`
-  - `AZURE_TENANT_ID`
-  - `AZURE_SUBSCRIPTION_ID`
+  - `AZURE_CLIENT_ID` (repository variable)
+  - `AZURE_TENANT_ID` (repository secret)
+  - `AZURE_SUBSCRIPTION_ID` (repository secret)
   
   See [docs/azure-oidc-setup.md](docs/azure-oidc-setup.md) for detailed setup instructions. Then run the "Azure OIDC Connectivity Check" workflow manually to verify the configuration.
 - [ ] **Update README.md** - Replace this generic template README with repository-specific documentation
