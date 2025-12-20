@@ -243,7 +243,12 @@ The workflow performs the following checks:
 - **azure/login Action**: [GitHub Marketplace](https://github.com/marketplace/actions/azure-login)
 - **README**: See the [Post-Creation Checklist](../README.md#post-creation-checklist) for context on when to configure Azure OIDC
 
----
-
 ## Documentation Test History
+### 2025-12-20
+- Result: PARTIAL
+- Platform/Context: GitHub Codespaces (Dev Container)
+- OS: Ubuntu 24.04.3 LTS
+- Shell: bash
+- Tester: Automated Documentation Tester
+- Notes: `az login` blocked by org access policy/Conditional Access; requires manual sign-in (for example `az login --use-device-code`) before remaining steps can be executed.
 

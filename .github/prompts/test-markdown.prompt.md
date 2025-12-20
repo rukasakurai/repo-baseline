@@ -63,14 +63,14 @@ Test the Markdown file: **${input:markdownFile:README.md}**
        - Any error messages or logs
        - Suggestions for resolution if applicable
 
-5. **Update the Target Markdown File with Successful Test Date**:
-    - Only if the overall status is `PASS` (all steps completed successfully), update the *target Markdown file itself* to record the last successfully tested date
-    - **If manual intervention was required**, use status `PASS with manual steps` instead of `PASS`
-    - If the overall status is `FAIL` or `PARTIAL` (couldn't complete all steps), do **not** update the test date
-    - Use today's date in ISO format: `YYYY-MM-DD`
-    - If the file already contains a section titled `## Documentation Test History`, add a new entry (do not replace existing history)
-    - Otherwise, append the section to the end of the file
-    - The section must be exactly in this format:
+5. **Update the Target Markdown File with Test History**:
+  - After running the test (regardless of outcome), update the *target Markdown file itself* with a new entry under `## Documentation Test History`
+  - Use today's date in ISO format: `YYYY-MM-DD`
+  - Set `Result` to match the overall status: `PASS` / `PASS with manual steps` / `PASS with fixes` / `PARTIAL` / `FAIL`
+  - If the file already contains a section titled `## Documentation Test History`, add a new entry (do not replace existing history)
+  - Otherwise, append the section to the end of the file
+  - Use the `Notes` field to capture any key blockers or manual steps (for example, authentication required, org policy blocks, or missing permissions)
+  - The section must be exactly in this format:
 
       ```
       ## Documentation Test History
