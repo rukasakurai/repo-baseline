@@ -18,7 +18,7 @@ For the core setup steps, see the official documentation. This guide covers:
 > **Note**: This decision guidance is not currently in the official docs. It may be added in the future as the extension matures.
 
 **Add this setup** when a repository:
-- Deploys or manages Azure resources (Bicep, Terraform, `azd`) and frequently encounters Azure-specific unknowns during IaC authoring
+- Deploys or manages Azure resources and frequently encounters Azure-specific unknowns during IaC authoring
 - Benefits from the agent having least-privilege Azure visibility (Reader scoped to a resource group)
 
 **Skip or keep optional** when:
@@ -42,63 +42,48 @@ The coding agent extension complements CI-based validation by giving the agent *
 
 > **Note**: This guidance on resource group selection based on existing `azd` environments is not currently in the official docs. It may be added in the future.
 
-The `azd coding-agent config` command asks you to select or create a **resource group** (where the managed identity is placed) and scopes the default **Reader** role to that resource group. The right choice depends on your existing `azd` environment setup.
+The `azd coding-agent config` command asks you to select or create a **resource group** (where the managed identity is placed) and scopes the default **Reader** role to that resource group.
 
-If you use `azd` for infrastructure provisioning, your project likely has a `.azure/` folder containing one or more environment directories, each with a `.env` file that stores settings like `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, and `AZURE_LOCATION`. You can check what exists with:
+### The core decision
 
-```bash
-azd env list
-```
+You have two options:
 
-### Scenario 1: No `.azure` folder (fresh repository, no `azd` environments)
+**Option A: Use a dedicated agent resource group**
 
-The repository has no `azd` environments yet — no resource groups or deployed resources exist.
+Create a resource group solely for the managed identity (e.g., `rg-copilot-agent`). This keeps identity resources separate from application resources and decouples the identity's lifecycle from any single environment.
 
-**Options**:
+Benefits:
+- **Cross-repo sharing**: The extension prompts "Create new user-assigned managed identity" or "Use existing user-assigned managed identity" — you can reuse the same identity across multiple repositories by selecting "Use existing" and adding a federated credential for each repo
+- **Lifecycle stability**: If application resource groups are torn down (e.g., ephemeral dev environments), the identity persists
+- **Centralized management**: One identity with role assignments to multiple resource groups
 
-- **Create the dev resource group now** — Create the resource group your application will eventually deploy into (e.g., `rg-<app>-dev`). The managed identity and Reader role are scoped to it from the start, and when you later run `azd provision` targeting this RG, the agent already has visibility. No follow-up role assignments needed.
-- **Create a dedicated agent resource group** — Create a resource group solely for the managed identity (e.g., `rg-copilot-agent`). Keeps identity resources separate from application resources. You will need to grant Reader on application resource groups as they are created:
-
+Trade-offs:
+- Requires granting Reader on each application resource group the agent should inspect:
   ```bash
   az role assignment create \
     --assignee <managed-identity-client-id> \
     --role Reader \
     --scope /subscriptions/<sub-id>/resourceGroups/<app-resource-group>
   ```
+- If the shared identity's permissions are misconfigured, all repos using it are affected
 
-### Scenario 2: One `azd` environment (single `.azure/<env-name>/` directory)
+**Option B: Use an application resource group**
 
-The repository has a single `azd` environment — typically one subscription, one resource group, one deployment target.
+Place the managed identity in a resource group your application uses (or will use). The agent gets immediate Reader visibility into that environment.
 
-To check which resource group your environment uses:
+- If you already have `azd` environments, check which resource groups exist:
+  ```bash
+  azd env list
+  azd env get-value AZURE_RESOURCE_GROUP --environment <env-name>
+  ```
+- If you have multiple environments, choose one the agent will commonly need to inspect
+- If you have no environments yet, create the resource group now (e.g., `rg-<app>-dev`) — when you later run `azd provision` targeting this RG, the agent already has visibility
 
-```bash
-azd env get-value AZURE_RESOURCE_GROUP
-```
+Trade-off: If the resource group is torn down (e.g., ephemeral environments), the managed identity is deleted and you'll need to reconfigure.
 
-**Options**:
+### Granting access to additional resource groups
 
-- **Use the existing application resource group** — Select the resource group from your `.env` file (`AZURE_RESOURCE_GROUP`). The agent gets immediate Reader visibility into deployed resources. Simplest setup.
-- **Use a separate resource group** — Create a dedicated resource group for the managed identity and grant Reader on the application resource group separately. Cleaner separation, but requires an extra role assignment.
-
-### Scenario 3: Multiple `azd` environments (multiple `.azure/<env-name>/` directories)
-
-The repository has multiple `azd` environments (e.g., `dev`, `staging`, `prod`), potentially spanning different subscriptions and resource groups.
-
-To list all environments and their resource groups:
-
-```bash
-azd env list
-# Then for each environment:
-azd env get-value AZURE_RESOURCE_GROUP --environment <env-name>
-```
-
-**Options**:
-
-- **Use the dev environment's resource group** — The agent gets immediate Reader visibility into the environment it will most commonly author changes against. If it also needs to inspect other environments, grant additional Reader assignments.
-- **Use a separate resource group** — Create a dedicated resource group for the managed identity and grant Reader on whichever application resource groups the agent should inspect.
-
-In either case, grant additional Reader access as needed:
+Whichever option you choose, you can grant Reader access to additional resource groups as needed:
 
 ```bash
 az role assignment create \
@@ -108,14 +93,6 @@ az role assignment create \
 ```
 
 > **Least-privilege tip**: Avoid granting Reader to production resource groups unless the agent specifically needs to inspect production state.
-
-### Summary
-
-| Scenario | Options | Reader scope |
-|---|---|---|
-| No `.azure` folder | Create dev app RG now, or create dedicated agent RG | Selected RG; add others later as needed |
-| Single `azd` environment | Use existing app RG, or create dedicated agent RG | App RG (directly or via extra assignment) |
-| Multiple `azd` environments | Use dev app RG, or create dedicated agent RG | Selected RG; add others as needed |
 
 ## Customizing the Copilot Setup Steps Workflow
 
