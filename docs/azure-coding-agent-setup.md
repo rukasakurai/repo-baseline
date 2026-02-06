@@ -1,90 +1,166 @@
 # Azure Coding Agent Setup Guide
 
-This guide provides step-by-step instructions for enabling AI agents (such as GitHub Copilot coding agent) to provision, deploy, and test against Azure autonomously—removing the need for manual human testing of `azd` workflows.
+This guide supplements the [official Azure Developer CLI documentation](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/extensions/copilot-coding-agent-extension) with additional context for deciding when and how to set up GitHub Copilot coding agent with Azure access.
 
-## Table of Contents
+For the core setup steps, see the official documentation. This guide covers:
 
-- [Overview](#overview)
-- [Prerequisites](#prerequisites)
-- [Step 1: Install the azd Coding Agent Extension](#step-1-install-the-azd-coding-agent-extension)
-- [Step 2: Configure Azure Access for the Coding Agent](#step-2-configure-azure-access-for-the-coding-agent)
-- [Step 3: Add MCP Server Configuration](#step-3-add-mcp-server-configuration)
-- [Step 4: Merge the Generated Pull Request](#step-4-merge-the-generated-pull-request)
-- [Step 5: Verify the Setup](#step-5-verify-the-setup)
-- [What the Extension Configures](#what-the-extension-configures)
-- [Customizing the Copilot Setup Steps Workflow](#customizing-the-copilot-setup-steps-workflow)
-- [Troubleshooting](#troubleshooting)
-- [Additional Resources](#additional-resources)
+- [When to Use This](#when-to-use-this) — decision guidance for whether this setup adds value
+- [Key Benefits Over CI-Only Validation](#key-benefits-over-ci-only-validation) — why read-time Azure access matters
+- [Choosing a Resource Group and Managed Identity](#choosing-a-resource-group-and-managed-identity) — guidance based on your existing `azd` environment setup
+- [Customizing the Copilot Setup Steps Workflow](#customizing-the-copilot-setup-steps-workflow) — what can and cannot be changed
+- [Supply-Chain Considerations](#supply-chain-considerations) — version pinning for `@azure/mcp`
+- [Caveats and Limitations](#caveats-and-limitations) — setting realistic expectations
 
-## Overview
+> **Note**: Some topics in this guide may be incorporated into the [official documentation](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/extensions/copilot-coding-agent-extension) in the future. Check the official docs first for the most current information.
 
-By default, AI agents can write and locally test code but cannot provision or deploy to Azure. This creates a workflow bottleneck: a human must manually run `azd provision`, deploy, and verify functionality against Azure.
+## When to Use This
 
-The [Azure Developer CLI Copilot Coding Agent Extension](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/extensions/copilot-coding-agent-extension) (`azure.coding-agent`) solves this by:
+> **Note**: This decision guidance is not currently in the official docs. It may be added in the future as the extension matures.
 
-- Creating a managed identity with federated credentials (OIDC) for secure, secretless authentication
-- Configuring a GitHub Actions environment (`copilot`) with the necessary Azure variables
-- Generating a `copilot-setup-steps.yml` workflow that prepares the agent's runtime environment
-- Providing MCP server configuration so the agent can interact with Azure resources
+**Add this setup** when a repository:
+- Deploys or manages Azure resources (Bicep, Terraform, `azd`) and frequently encounters Azure-specific unknowns during IaC authoring
+- Benefits from the agent having least-privilege Azure visibility (Reader scoped to a resource group)
 
-Once configured, AI agents can autonomously provision Azure resources, deploy applications, and run tests against deployed services.
+**Skip or keep optional** when:
+- The repository does not deploy Azure resources
+- You do not want automated identity/bootstrap changes (resource group, managed identity, federation) as part of standard repo initialization
 
-## Prerequisites
+## Key Benefits Over CI-Only Validation
 
-Before you begin, ensure you have:
+> **Note**: This value-proposition framing is not currently in the official docs. The [Azure SDK blog post](https://devblogs.microsoft.com/azure-sdk/azure-developer-cli-copilot-coding-agent-config/) provides some context.
 
-- **Azure OIDC configured**: Complete the [Azure OIDC setup](azure-oidc-setup.md) first (or at minimum, have an active Azure subscription with permissions to create resource groups and managed identities)
-- **Azure Developer CLI (`azd`)**: Installed and authenticated. Verify with `azd version`.
-  - Install: <https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd>
-- **GitHub Copilot**: Access to GitHub Copilot coding agent (requires Copilot Pro, Business, or Enterprise)
-- **Repository admin access**: Permissions to push workflow changes and configure GitHub environments
-- **Local clone**: The repository must be cloned locally for `azd` CLI operations
+CI/CD workflows (such as this repository's [Azure OIDC connectivity check](../.github/workflows/azure-oidc-check.yml)) can automate `azd provision` on PRs, giving post-hoc validation of infrastructure changes. However, that approach validates changes **after the fact** — the agent authors a change, CI runs, and failures surface only then.
 
-## Step 1: Install the azd Coding Agent Extension
+The coding agent extension complements CI-based validation by giving the agent **read-time visibility into Azure state while it is authoring changes**:
 
-Install (or upgrade) the `azure.coding-agent` extension:
+1. **Fewer iteration loops** — The agent can confirm what exists in the target resource group (names, types, regions, SKUs) *before* proposing IaC changes, reducing "guess → fail CI → revise" cycles
+2. **Better failure triage** — When `azd up` fails in CI, the agent can correlate log errors with actual Azure-side state to propose more accurate fixes
+3. **Consistent setup across repos** — For template-derived repositories, the extension automates the repetitive parts (managed identity, federated credentials, environment config) so each new repo starts agent-ready
+4. **Controlled scope** — Default Reader role follows least-privilege; additional roles (e.g., Contributor) can be granted per-repo as needed
 
-```bash
-azd extension install azure.coding-agent
-```
+## Choosing a Resource Group and Managed Identity
 
-To upgrade an existing installation:
+> **Note**: This guidance on resource group selection based on existing `azd` environments is not currently in the official docs. It may be added in the future.
+
+The `azd coding-agent config` command asks you to select or create a **resource group** (where the managed identity is placed) and scopes the default **Reader** role to that resource group. The right choice depends on your existing `azd` environment setup.
+
+If you use `azd` for infrastructure provisioning, your project likely has a `.azure/` folder containing one or more environment directories, each with a `.env` file that stores settings like `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, and `AZURE_LOCATION`. You can check what exists with:
 
 ```bash
-azd extension upgrade azure.coding-agent
+azd env list
 ```
 
-Verify the extension is installed:
+### Scenario 1: No `.azure` folder (fresh repository, no `azd` environments)
+
+The repository has no `azd` environments yet — no resource groups or deployed resources exist.
+
+**Options**:
+
+- **Create the dev resource group now** — Create the resource group your application will eventually deploy into (e.g., `rg-<app>-dev`). The managed identity and Reader role are scoped to it from the start, and when you later run `azd provision` targeting this RG, the agent already has visibility. No follow-up role assignments needed.
+- **Create a dedicated agent resource group** — Create a resource group solely for the managed identity (e.g., `rg-copilot-agent`). Keeps identity resources separate from application resources. You will need to grant Reader on application resource groups as they are created:
+
+  ```bash
+  az role assignment create \
+    --assignee <managed-identity-client-id> \
+    --role Reader \
+    --scope /subscriptions/<sub-id>/resourceGroups/<app-resource-group>
+  ```
+
+### Scenario 2: One `azd` environment (single `.azure/<env-name>/` directory)
+
+The repository has a single `azd` environment — typically one subscription, one resource group, one deployment target.
+
+To check which resource group your environment uses:
 
 ```bash
-azd extension list
+azd env get-value AZURE_RESOURCE_GROUP
 ```
 
-## Step 2: Configure Azure Access for the Coding Agent
+**Options**:
 
-From your local repository root, run:
+- **Use the existing application resource group** — Select the resource group from your `.env` file (`AZURE_RESOURCE_GROUP`). The agent gets immediate Reader visibility into deployed resources. Simplest setup.
+- **Use a separate resource group** — Create a dedicated resource group for the managed identity and grant Reader on the application resource group separately. Cleaner separation, but requires an extra role assignment.
+
+### Scenario 3: Multiple `azd` environments (multiple `.azure/<env-name>/` directories)
+
+The repository has multiple `azd` environments (e.g., `dev`, `staging`, `prod`), potentially spanning different subscriptions and resource groups.
+
+To list all environments and their resource groups:
 
 ```bash
-azd coding-agent config
+azd env list
+# Then for each environment:
+azd env get-value AZURE_RESOURCE_GROUP --environment <env-name>
 ```
 
-The command will interactively guide you through:
+**Options**:
 
-1. **Selecting your Azure subscription** — Choose the subscription for the managed identity
-2. **Selecting or creating a resource group** — The managed identity will be placed here
-3. **Creating a user-assigned managed identity** — Used for OIDC-based authentication
-4. **Assigning RBAC roles** — Default is `Reader`; you can assign additional roles as needed for your scenario (e.g., `Contributor` for resource provisioning)
-5. **Creating a federated credential** — Links the GitHub repository to the managed identity
-6. **Configuring the GitHub environment** — Sets up a `copilot` environment in your repository with the required variables (`AZURE_CLIENT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_TENANT_ID`)
-7. **Generating a workflow file** — Creates `.github/workflows/copilot-setup-steps.yml` on a new branch and opens a pull request
+- **Use the dev environment's resource group** — The agent gets immediate Reader visibility into the environment it will most commonly author changes against. If it also needs to inspect other environments, grant additional Reader assignments.
+- **Use a separate resource group** — Create a dedicated resource group for the managed identity and grant Reader on whichever application resource groups the agent should inspect.
 
-> **Note**: The `azd coding-agent config` command requires interactive authentication. Run it locally—it cannot be run by an AI agent.
+In either case, grant additional Reader access as needed:
 
-## Step 3: Add MCP Server Configuration
+```bash
+az role assignment create \
+  --assignee <managed-identity-client-id> \
+  --role Reader \
+  --scope /subscriptions/<sub-id>/resourceGroups/<other-resource-group>
+```
 
-After running `azd coding-agent config`, the CLI outputs an MCP server configuration JSON block. Copy this configuration and add it to your repository's GitHub Copilot MCP settings.
+> **Least-privilege tip**: Avoid granting Reader to production resource groups unless the agent specifically needs to inspect production state.
 
-The output will look similar to:
+### Summary
+
+| Scenario | Options | Reader scope |
+|---|---|---|
+| No `.azure` folder | Create dev app RG now, or create dedicated agent RG | Selected RG; add others later as needed |
+| Single `azd` environment | Use existing app RG, or create dedicated agent RG | App RG (directly or via extra assignment) |
+| Multiple `azd` environments | Use dev app RG, or create dedicated agent RG | Selected RG; add others as needed |
+
+## Customizing the Copilot Setup Steps Workflow
+
+> **Note**: The official azd docs briefly mention the workflow file. For detailed customization options, see the [GitHub documentation on customizing the Copilot coding agent environment](https://docs.github.com/en/copilot/customizing-copilot/customizing-the-development-environment-for-copilot-coding-agent). This section summarizes key constraints.
+
+The `azd coding-agent config` command generates `.github/workflows/copilot-setup-steps.yml`. This workflow runs automatically before each Copilot coding agent session. It is **not** triggered through normal GitHub Actions event mechanisms — the Copilot coding agent finds and invokes it directly by its well-known path and job name.
+
+### What cannot be changed
+
+- **File path**: Must be exactly `.github/workflows/copilot-setup-steps.yml`
+- **Job name**: Must be exactly `copilot-setup-steps`
+
+### What can be changed
+
+Within the `copilot-setup-steps` job, you can customize:
+
+| Setting | Notes |
+|---|---|
+| `steps` | Add, remove, or modify setup steps |
+| `permissions` | Scope to least privilege |
+| `runs-on` | Larger runners or ARC self-hosted runners (Ubuntu x64 only) |
+| `services` | Add service containers |
+| `timeout-minutes` | Maximum: 59 |
+| `environment` | The generated file uses `copilot` to pull in Azure variables |
+
+### Trigger configuration
+
+The `on:` trigger does not affect how the Copilot coding agent invokes the workflow. However, triggers are useful for **validating the workflow itself**:
+
+```yaml
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+```
+
+## Supply-Chain Considerations
+
+> **Note**: This is not currently mentioned in the official docs.
+
+The default MCP server configuration uses `@azure/mcp@latest`:
 
 ```json
 {
@@ -99,93 +175,20 @@ The output will look similar to:
 }
 ```
 
-To add this configuration:
+For reproducibility and supply-chain hygiene, consider pinning to a specific version (e.g., `@azure/mcp@0.1.0`) rather than using `latest`.
 
-1. Go to your repository on GitHub
-2. Navigate to **Settings** → **Copilot** → **Coding agent**
-3. Under **MCP configuration**, paste the JSON block
-4. Save the configuration
+## Caveats and Limitations
 
-## Step 4: Merge the Generated Pull Request
+> **Note**: These caveats are not currently in the official docs.
 
-The `azd coding-agent config` command creates a branch (typically `azd-enable-copilot-coding-agent-with-azure`) and opens a pull request that adds the `copilot-setup-steps.yml` workflow.
-
-1. Review the pull request on GitHub
-2. Verify the workflow file contents are appropriate for your project
-3. Merge the pull request
-
-## Step 5: Verify the Setup
-
-After merging:
-
-1. **Check the GitHub environment**: Navigate to **Settings** → **Environments** and confirm the `copilot` environment exists with the correct variables
-2. **Verify the managed identity**: In the Azure Portal, confirm the managed identity has the expected role assignments
-3. **Test with an AI agent**: Assign a task to the Copilot coding agent that requires Azure interaction (e.g., reading a resource group) and verify it succeeds
-
-## What the Extension Configures
-
-| Component | Description |
-|-----------|-------------|
-| **Managed identity** | A user-assigned managed identity in your Azure subscription |
-| **Federated credential** | OIDC trust between the GitHub repository and the managed identity |
-| **GitHub environment** | A `copilot` environment with `AZURE_CLIENT_ID`, `AZURE_SUBSCRIPTION_ID`, and `AZURE_TENANT_ID` |
-| **Workflow file** | `.github/workflows/copilot-setup-steps.yml` — prepares the agent's runtime environment |
-| **MCP configuration** | JSON config enabling the Azure MCP server for the Copilot coding agent |
-
-## Customizing the Copilot Setup Steps Workflow
-
-The generated `copilot-setup-steps.yml` workflow runs before each Copilot agent session. You can customize it to install additional tools or dependencies your project requires.
-
-For example, to add Azure Developer CLI to the agent's environment:
-
-```yaml
-steps:
-  - name: Checkout code
-    uses: actions/checkout@v4
-
-  - name: Install azd
-    uses: Azure/setup-azd@v2
-```
-
-> **Important**: The job name in the workflow must be exactly `copilot-setup-steps`.
-
-## Troubleshooting
-
-### The Copilot agent cannot authenticate with Azure
-
-**Possible causes**:
-- The managed identity's federated credential does not match the repository or environment
-- The `copilot` GitHub environment is missing or has incorrect variables
-- The managed identity lacks sufficient RBAC permissions
-
-**Solutions**:
-- Re-run `azd coding-agent config` to reconfigure
-- Verify the federated credential subject matches `repo:OWNER/REPO:environment:copilot`
-- Check role assignments on the managed identity in the Azure Portal
-
-### The `copilot-setup-steps.yml` workflow fails
-
-**Possible causes**:
-- Missing or misconfigured tools in the workflow
-- Network issues during dependency installation
-
-**Solutions**:
-- Check the workflow run logs in the **Actions** tab
-- Ensure all tools referenced in the workflow are available on the runner
-
-### The MCP server is not available to the agent
-
-**Possible causes**:
-- MCP configuration was not saved in repository settings
-- The `npx` command cannot find the `@azure/mcp` package
-
-**Solutions**:
-- Verify MCP configuration in **Settings** → **Copilot** → **Coding agent**
-- Ensure the workflow installs Node.js if it is not available by default on the runner
+- **Manual steps still required**: The extension automates Azure-side and GitHub environment setup, but you must still manually merge the generated PR, paste the MCP config into repository settings, and optionally adjust roles beyond Reader
+- **Agent behavior is not guaranteed**: Whether the agent consistently uses MCP tools correctly or produces better outcomes depends on the task complexity and model behavior — results may vary
+- **Azure-specific**: This setup provides little to no benefit for repositories that do not interact with Azure resources
+- **Complements, does not replace, CI validation**: This gives the agent read-time Azure visibility; you should still run `azd provision`/`azd up` in CI (e.g., via the [OIDC check workflow](../.github/workflows/azure-oidc-check.yml)) for authoritative deployment validation
 
 ## Additional Resources
 
-- **Azure Developer CLI Extension**: [Connect GitHub Copilot coding agent with Azure MCP Server using azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/extensions/copilot-coding-agent-extension)
+- **Official Setup Guide**: [Connect GitHub Copilot coding agent with Azure MCP Server using azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/extensions/copilot-coding-agent-extension)
 - **Azure SDK Blog**: [Introducing the azd extension to configure GitHub Copilot coding agent](https://devblogs.microsoft.com/azure-sdk/azure-developer-cli-copilot-coding-agent-config/)
-- **GitHub Documentation**: [Extending Copilot coding agent with MCP](https://docs.github.com/en/copilot/using-github-copilot/coding-agent/extending-copilot-coding-agent-with-mcp)
-- **Azure OIDC Setup**: See [docs/azure-oidc-setup.md](azure-oidc-setup.md) for foundational Azure OIDC configuration
+- **GitHub Documentation**: [Customizing the development environment for Copilot coding agent](https://docs.github.com/en/copilot/customizing-copilot/customizing-the-development-environment-for-copilot-coding-agent)
+- **Azure OIDC Setup**: See [azure-oidc-setup.md](azure-oidc-setup.md) for foundational Azure OIDC configuration
