@@ -67,6 +67,10 @@ Trade-offs:
   ```
 - If the shared identity's permissions are misconfigured, all repos using it are affected
 
+Cross-subscription and cross-tenant considerations:
+- **Same Entra tenant, different subscription**: Supported. A managed identity can be granted roles on resource groups in any subscription within the same Entra tenant — just use the target subscription's ID in the `--scope` parameter
+- **Different Entra tenant**: Not directly supported. Azure RBAC requires the principal to be resolvable in the same tenant as the resources, so a managed identity from Tenant A cannot be directly granted roles in Tenant B. Cross-tenant implementation maybe possible but would require a different architectural pattern
+
 **Option B: Use an application resource group**
 
 Place the managed identity in a resource group your application uses (or will use). The agent gets immediate Reader visibility into that environment.
