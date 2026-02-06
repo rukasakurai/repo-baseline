@@ -1,4 +1,4 @@
-# Azure Coding Agent Setup Guide
+# Azure Coding Agent Guide
 
 This guide supplements the [official Azure Developer CLI documentation](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/extensions/copilot-coding-agent-extension) with additional context for deciding when and how to set up GitHub Copilot coding agent with Azure access.
 

@@ -9,4 +9,4 @@ This is a **baseline template repository** designed to provide a minimal, reusab
 
 ## Azure Access
 
-The [Azure Developer CLI Copilot Coding Agent Extension](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/extensions/copilot-coding-agent-extension) can give agents read-time visibility into Azure state while authoring changes. See [docs/azure-coding-agent-setup.md](docs/azure-coding-agent-setup.md) for setup guidance.
+The [Azure Developer CLI Copilot Coding Agent Extension](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/extensions/copilot-coding-agent-extension) can give agents read-time visibility into Azure state while authoring changes. See [docs/azure-coding-agent-guide.md](docs/azure-coding-agent-guide.md) for guidance.
