@@ -29,5 +29,6 @@ After creating a repository from this template:
   - `AZURE_SUBSCRIPTION_ID` (repository secret)
   
   See [docs/azure-oidc-setup.md](docs/azure-oidc-setup.md) for detailed setup instructions. Then run the "Azure OIDC Connectivity Check" workflow manually to verify the configuration.
+- [ ] **Enable AI agent Azure access** (if using Azure with Copilot coding agent) - Run `azd coding-agent config` to allow AI agents to provision, deploy, and test against Azure autonomously. See [docs/azure-coding-agent-setup.md](docs/azure-coding-agent-setup.md) for instructions.
 - [ ] **Update README.md** - Replace this generic template README with repository-specific documentation
 - [ ] **Review AGENTS.md** - Update or remove this file to reflect your repository's specific purpose and conventions
