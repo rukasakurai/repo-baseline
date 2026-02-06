@@ -5,7 +5,7 @@ A minimal GitHub template repository providing baseline structure and convention
 ## What This Is
 
 This is a **template repository** that provides:
-- Human and AI collaboration guidance (AGENTS.md)
+- Contribution guidelines ([CONTRIBUTING.md](CONTRIBUTING.md)) and AI collaboration guidance ([AGENTS.md](AGENTS.md))
 - Issue and pull request templates for structured communication
 - Manual Azure OIDC validation workflow
 - A starting point that avoids premature technical decisions
