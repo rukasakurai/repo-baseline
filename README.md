@@ -47,12 +47,12 @@ A manual workflow that validates your Azure OIDC configuration is working correc
 
 Automates provisioning of infrastructure, application deployment, test execution, and cleanup using the Azure Developer CLI (`azd`). Creates a resource group (with optional tagging from repository secrets) before running `azd provision` and `azd deploy`.
 
-- **Trigger**: Manual (`workflow_dispatch`) or on pull requests that modify `app/`, `infra/`, or `azure.yaml`
+- **Trigger**: Manual (`workflow_dispatch`) or on pull requests to `main` that modify `app/`, `infra/`, or `azure.yaml`
 - **File**: `.github/workflows/e2e-test.yml`
 - **Inputs** (manual trigger):
   - `cleanup` — Run `azd down` after tests (default: `true`)
   - `environment` — azd environment name (default: auto-generated from run ID)
-  - `location` — Azure region (default: `eastus2`)
+  - `location` — Azure region (default: `japaneast`)
 
 **Customize for your project**: Edit the "Run tests" step in the workflow to add your E2E test commands (e.g., `pytest tests/e2e/`, `npm test`, or a custom test script).
 
@@ -75,7 +75,7 @@ Enables on-demand creation (`azd up`) and destruction (`azd down`) of Azure envi
 - **Inputs**:
   - `action` — `up` or `down` (required)
   - `environment` — azd environment name (default: `dev`)
-  - `location` — Azure region (default: `eastus2`)
+  - `location` — Azure region (default: `japaneast`)
 
 #### Usage
 

@@ -16,8 +16,9 @@ on:
         description: "Azure region"
         required: false
         type: string
-        default: "eastus2"
+        default: "japaneast"
   pull_request:
+    branches: [main]
     paths:
       - "app/**"
       - "infra/**"
@@ -29,7 +30,7 @@ permissions:
 
 env:
   AZD_ENVIRONMENT: ${{ inputs.environment || format('gha-e2e-{0}-{1}', github.run_id, github.run_attempt) }}
-  AZD_LOCATION: ${{ inputs.location || 'eastus2' }}
+  AZD_LOCATION: ${{ inputs.location || 'japaneast' }}
 
 jobs:
   e2e:

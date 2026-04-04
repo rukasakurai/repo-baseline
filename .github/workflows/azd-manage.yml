@@ -19,7 +19,7 @@ on:
         description: "Azure region"
         required: false
         type: string
-        default: "eastus2"
+        default: "japaneast"
 
 permissions:
   id-token: write
@@ -27,7 +27,7 @@ permissions:
 
 env:
   AZD_ENVIRONMENT: ${{ inputs.environment || 'dev' }}
-  AZD_LOCATION: ${{ inputs.location || 'eastus2' }}
+  AZD_LOCATION: ${{ inputs.location || 'japaneast' }}
 
 jobs:
   azd:
