@@ -80,7 +80,7 @@ jobs:
           MAX_RETRIES=5
           for i in $(seq 1 $MAX_RETRIES); do
             echo "=== azd deploy attempt $i/$MAX_RETRIES ==="
-            if azd deploy; then
+            if azd deploy --no-prompt; then
               echo "azd deploy succeeded on attempt $i"
               break
             fi
