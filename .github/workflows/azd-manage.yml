@@ -11,10 +11,9 @@ on:
           - up
           - down
       environment:
-        description: "azd environment name"
+        description: "azd environment name (default: repository name)"
         required: false
         type: string
-        default: "dev"
       location:
         description: "Azure region"
         required: false
@@ -26,7 +25,7 @@ permissions:
   contents: read
 
 env:
-  AZD_ENVIRONMENT: ${{ inputs.environment || 'dev' }}
+  AZD_ENVIRONMENT: ${{ inputs.environment || github.event.repository.name }}
   AZD_LOCATION: ${{ inputs.location || 'japaneast' }}
 
 jobs:

@@ -74,7 +74,7 @@ Enables on-demand creation (`azd up`) and destruction (`azd down`) of Azure envi
 - **File**: `.github/workflows/azd-manage.yml`
 - **Inputs**:
   - `action` — `up` or `down` (required)
-  - `environment` — azd environment name (default: `dev`)
+  - `environment` — azd environment name (default: repository name, e.g. `my-project` → resource group `rg-my-project`)
   - `location` — Azure region (default: `japaneast`)
 
 #### Usage
