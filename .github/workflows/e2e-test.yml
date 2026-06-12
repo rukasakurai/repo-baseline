@@ -17,12 +17,6 @@ on:
         required: false
         type: string
         default: "japaneast"
-  pull_request:
-    branches: [main]
-    paths:
-      - "app/**"
-      - "infra/**"
-      - "azure.yaml"
 
 permissions:
   id-token: write
