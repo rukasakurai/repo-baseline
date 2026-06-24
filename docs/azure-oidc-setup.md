@@ -11,6 +11,7 @@ This guide provides step-by-step instructions for configuring Azure OpenID Conne
 - [Step 3: Assign Azure Permissions](#step-3-assign-azure-permissions)
 - [Step 4: Configure GitHub Repository Variables and Secrets](#step-4-configure-github-repository-variables-and-secrets)
 - [Step 5: Verify Configuration](#step-5-verify-configuration)
+- [Security considerations](#security-considerations)
 - [Troubleshooting](#troubleshooting)
 - [Additional Resources](#additional-resources)
 
@@ -150,7 +151,9 @@ Federated credentials establish the trust relationship between GitHub and Azure.
       > ```
 
 3. **(Optional) Add federated credentials for other branches or environments**:
-   
+
+   > ⚠️ **Security note**: A `pull_request` federated credential lets workflows triggered by pull requests obtain Azure tokens for this app registration. Only add it if you intentionally run Azure-authenticated workflows on pull requests, and review [Security considerations](#security-considerations) first — combining PR triggers with a privileged role and checkout of untrusted fork code is a [pwn request](https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/). Prefer scoping such an app registration to a least-privilege role.
+
    For pull requests:
    ```bash
     APP_OBJECT_ID=$(az ad app show --id "$APP_ID" --query id -o tsv)
@@ -208,6 +211,8 @@ Federated credentials establish the trust relationship between GitHub and Azure.
 ## Step 3: Assign Azure Permissions
 
 The service principal needs appropriate permissions to access Azure resources.
+
+> 💡 **Least privilege**: Grant the narrowest role and scope that your workflows need. The examples below scope to the whole subscription for simplicity, but prefer scoping to a specific **resource group** (`--scope /subscriptions/$SUBSCRIPTION_ID/resourceGroups/<rg-name>`) and prefer **Reader** over **Contributor** unless your workflows must create or modify resources. Avoid subscription-wide **Contributor** for any app registration that can be reached by pull-request-triggered workflows.
 
 1. **Assign a role to the service principal**:
    
@@ -329,6 +334,16 @@ The workflow performs the following checks:
 - Verifies required GitHub Actions variables/secrets are configured
 - Attempts to authenticate with Azure using OIDC
 - Runs `az account show` to confirm connectivity
+
+## Security considerations
+
+OIDC removes long-lived secrets, but the app registration it authenticates is still a privileged identity. Keep these in mind, especially before wiring Azure-authenticated workflows to pull requests:
+
+- **Least privilege**: Grant the narrowest role and scope the workflows need (prefer Reader, and scope to a resource group rather than the whole subscription). See [Step 3](#step-3-assign-azure-permissions).
+- **Be cautious with PR triggers**: Workflows triggered by `pull_request` from forks run without repository secrets and without this app's OIDC token unless you add a `pull_request` federated credential. Adding one, then running privileged Azure steps on PRs, widens your attack surface.
+- **Avoid pwn requests**: Do **not** combine `pull_request_target` (or `workflow_run`) with checking out untrusted fork PR code in a privileged workflow — attacker-controlled code would run with this identity's Azure access. See GitHub's guidance on [preventing pwn requests](https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/) and [securely using `pull_request_target`](https://docs.github.com/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_target). `actions/checkout` v7+ refuses common fork-PR checkouts in these events by default; keep that protection rather than opting out.
+- **Restrict who can trigger workflows**: Use [GitHub Actions workflow execution protections](https://docs.github.com/enterprise-cloud@latest/admin/enforcing-policies/enforcing-policies-for-your-enterprise/actions-policies/about-actions-policies) (org/enterprise rulesets) to limit who can run `workflow_dispatch` and which events are permitted for workflows that hold Azure access.
+- **Use GitHub Environments**: For deploy workflows, gate Azure-authenticated jobs behind a protected Environment with required reviewers, and scope the federated credential to `environment:<name>`.
 
 ## Troubleshooting
 
