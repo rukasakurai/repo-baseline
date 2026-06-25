@@ -11,6 +11,7 @@ This guide provides step-by-step instructions for configuring Azure OpenID Conne
 - [Step 3: Assign Azure Permissions](#step-3-assign-azure-permissions)
 - [Step 4: Configure GitHub Repository Variables and Secrets](#step-4-configure-github-repository-variables-and-secrets)
 - [Step 5: Verify Configuration](#step-5-verify-configuration)
+- [Security considerations](#security-considerations)
 - [Troubleshooting](#troubleshooting)
 - [Additional Resources](#additional-resources)
 
@@ -150,33 +151,6 @@ Federated credentials establish the trust relationship between GitHub and Azure.
       > ```
 
 3. **(Optional) Add federated credentials for other branches or environments**:
-   
-   For pull requests:
-   ```bash
-    APP_OBJECT_ID=$(az ad app show --id "$APP_ID" --query id -o tsv)
-
-   az ad app federated-credential create \
-       --id "$APP_OBJECT_ID" \
-     --parameters '{
-       "name": "github-pr-credential",
-       "issuer": "https://token.actions.githubusercontent.com",
-       "subject": "repo:'"$GITHUB_ORG"'/'"$GITHUB_REPO"':pull_request",
-       "audiences": ["api://AzureADTokenExchange"]
-     }'
-   ```
-
-    PowerShell:
-    ```powershell
-    $subject = "repo:$env:GITHUB_ORG/$env:GITHUB_REPO:pull_request"
-    $payload = @{
-       name      = "github-pr-credential"
-       issuer    = "https://token.actions.githubusercontent.com"
-       subject   = $subject
-       audiences = @("api://AzureADTokenExchange")
-    } | ConvertTo-Json -Depth 4
-
-      az ad app federated-credential create --id $env:APP_OBJECT_ID --parameters $payload
-    ```
 
    For specific environments:
    ```bash
@@ -208,6 +182,8 @@ Federated credentials establish the trust relationship between GitHub and Azure.
 ## Step 3: Assign Azure Permissions
 
 The service principal needs appropriate permissions to access Azure resources.
+
+> 💡 **Least privilege**: Grant the narrowest role and scope that your workflows need. The examples below scope to the whole subscription for simplicity, but prefer scoping to a specific **resource group** (`--scope /subscriptions/$SUBSCRIPTION_ID/resourceGroups/<rg-name>`) and prefer **Reader** over **Contributor** unless your workflows must create or modify resources. Avoid subscription-wide **Contributor** for any app registration that can be reached by pull-request-triggered workflows.
 
 1. **Assign a role to the service principal**:
    
@@ -330,6 +306,16 @@ The workflow performs the following checks:
 - Attempts to authenticate with Azure using OIDC
 - Runs `az account show` to confirm connectivity
 
+## Security considerations
+
+OIDC removes long-lived secrets, but the app registration it authenticates is still a privileged identity:
+
+- **Least privilege**: Prefer Reader and the narrowest scope; see [Step 3](#step-3-assign-azure-permissions).
+- **Understand PR-trigger privilege**: Fork `pull_request` runs get no repository secrets and no usable OIDC token by default — adding a `pull_request` federated credential does **not** change that. `pull_request_target` and `workflow_run`, by contrast, run with full secrets and Azure access even for fork PRs.
+- **Avoid pwn requests**: Do **not** combine `pull_request_target` (or `workflow_run`) with checking out untrusted fork PR code in a privileged workflow — attacker code would run with this identity's Azure access. See [securely using `pull_request_target`](https://gh.io/securely-using-pull_request_target). As of v7, [`actions/checkout`](https://github.com/actions/checkout) refuses common fork-PR checkouts in these events by default; keep that protection.
+- **Restrict who can trigger workflows**: Use [Actions policies / workflow execution protections](https://docs.github.com/en/enterprise-cloud@latest/admin/enforcing-policies/enforcing-policies-for-your-enterprise/actions-policies/about-actions-policies) (org/enterprise rulesets) to limit who can run `workflow_dispatch` and which events are permitted for workflows that hold Azure access.
+- **Use GitHub Environments**: For deploy workflows, gate Azure-authenticated jobs behind a protected Environment with required reviewers, and scope the federated credential to `environment:<name>`.
+
 ## Troubleshooting
 
 ### Error: "AADSTS70021: No matching federated identity record found"
@@ -384,7 +370,9 @@ The workflow performs the following checks:
 ## Additional Resources
 
 - **Azure Documentation**: [Configure OpenID Connect in Azure](https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure)
-- **GitHub Documentation**: [Security hardening with OpenID Connect](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect)
+- **GitHub Documentation**: [Security hardening with OpenID Connect](https://docs.github.com/en/actions/concepts/security/openid-connect)
+- **GitHub Documentation**: [Security hardening for GitHub Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions)
+- **GitHub Documentation**: [About Actions policies](https://docs.github.com/en/enterprise-cloud@latest/admin/enforcing-policies/enforcing-policies-for-your-enterprise/actions-policies/about-actions-policies)
 - **azure/login Action**: [GitHub Marketplace](https://github.com/marketplace/actions/azure-login)
 - **README**: See the [Post-Creation Checklist](../README.md#post-creation-checklist) for context on when to configure Azure OIDC
 

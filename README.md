@@ -47,8 +47,10 @@ A manual workflow that validates your Azure OIDC configuration is working correc
 
 Automates provisioning of infrastructure, application deployment, test execution, and cleanup using the Azure Developer CLI (`azd`). Creates a resource group (with optional tagging from repository secrets) before running `azd provision` and `azd deploy`.
 
-- **Trigger**: Manual (`workflow_dispatch`) or on pull requests to `main` that modify `app/`, `infra/`, or `azure.yaml`
+- **Trigger**: Manual (`workflow_dispatch`)
 - **File**: `.github/workflows/e2e-test.yml`
+
+> ⚠️ **Security note**: Keep this on `workflow_dispatch`. Adding a `pull_request_target` or `workflow_run` trigger that checks out fork code runs untrusted code with this workflow's Azure access (a "pwn request"). See [Security considerations](docs/azure-oidc-setup.md#security-considerations) before changing the triggers.
 - **Inputs** (manual trigger):
   - `cleanup` — Run `azd down` after tests (default: `true`)
   - `environment` — azd environment name (default: auto-generated from run ID)

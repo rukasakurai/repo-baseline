@@ -93,5 +93,5 @@ jobs:
           echo "For example: pytest tests/e2e/ or npm test"
 
       - name: Cleanup (azd down)
-        if: always() && (inputs.cleanup != false || github.event_name == 'pull_request')
+        if: always() && inputs.cleanup != false
         run: azd down --no-prompt --force --purge
