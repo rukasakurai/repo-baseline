@@ -152,7 +152,7 @@ Federated credentials establish the trust relationship between GitHub and Azure.
 
 3. **(Optional) Add federated credentials for other branches or environments**:
 
-   > ⚠️ **Security note**: A `pull_request` federated credential lets workflows triggered by pull requests obtain Azure tokens for this app registration. Only add it if you intentionally run Azure-authenticated workflows on pull requests, and review [Security considerations](#security-considerations) first — combining PR triggers with a privileged role and checkout of untrusted fork code is a [pwn request](https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/). Prefer scoping such an app registration to a least-privilege role.
+   > ⚠️ **Security note**: A `pull_request` federated credential lets workflows triggered by pull requests obtain Azure tokens for this app registration. Only add it if you intentionally run Azure-authenticated workflows on pull requests, and review [Security considerations](#security-considerations) first — combining PR triggers with a privileged role and checkout of untrusted fork code is a [pwn request](#security-considerations). Prefer scoping such an app registration to a least-privilege role.
 
    For pull requests:
    ```bash
@@ -341,9 +341,23 @@ OIDC removes long-lived secrets, but the app registration it authenticates is st
 
 - **Least privilege**: Grant the narrowest role and scope the workflows need (prefer Reader, and scope to a resource group rather than the whole subscription). See [Step 3](#step-3-assign-azure-permissions).
 - **Be cautious with PR triggers**: Workflows triggered by `pull_request` from forks run without repository secrets and without this app's OIDC token unless you add a `pull_request` federated credential. Adding one, then running privileged Azure steps on PRs, widens your attack surface.
-- **Avoid pwn requests**: Do **not** combine `pull_request_target` (or `workflow_run`) with checking out untrusted fork PR code in a privileged workflow — attacker-controlled code would run with this identity's Azure access. See GitHub's guidance on [preventing pwn requests](https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/) and [securely using `pull_request_target`](https://docs.github.com/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_target). `actions/checkout` v7+ refuses common fork-PR checkouts in these events by default; keep that protection rather than opting out.
-- **Restrict who can trigger workflows**: Use [GitHub Actions workflow execution protections](https://docs.github.com/enterprise-cloud@latest/admin/enforcing-policies/enforcing-policies-for-your-enterprise/actions-policies/about-actions-policies) (org/enterprise rulesets) to limit who can run `workflow_dispatch` and which events are permitted for workflows that hold Azure access.
+- **Avoid pwn requests**: Do **not** combine `pull_request_target` (or `workflow_run`) with checking out untrusted fork PR code in a privileged workflow — attacker-controlled code would run with this identity's Azure access. Follow GitHub's official [Security hardening for GitHub Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions), the [`pull_request_target` event reference](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_target), and [securely using `pull_request_target`](https://gh.io/securely-using-pull_request_target). As of v7, [`actions/checkout`](https://github.com/actions/checkout) refuses common fork-PR checkouts in these events by default; keep that protection rather than opting out.
+- **Restrict who can trigger workflows**: Use [Actions policies / workflow execution protections](https://docs.github.com/en/enterprise-cloud@latest/admin/enforcing-policies/enforcing-policies-for-your-enterprise/actions-policies/about-actions-policies) (org/enterprise rulesets) to limit who can run `workflow_dispatch` and which events are permitted for workflows that hold Azure access.
 - **Use GitHub Environments**: For deploy workflows, gate Azure-authenticated jobs behind a protected Environment with required reviewers, and scope the federated credential to `environment:<name>`.
+
+### Reference documentation
+
+Official guidance (start here):
+
+- [Security hardening for GitHub Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions) — GitHub
+- [Events that trigger workflows: `pull_request_target`](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_target) — GitHub
+- [Securely using `pull_request_target`](https://gh.io/securely-using-pull_request_target) — GitHub
+- [About Actions policies](https://docs.github.com/en/enterprise-cloud@latest/admin/enforcing-policies/enforcing-policies-for-your-enterprise/actions-policies/about-actions-policies) — GitHub
+- [Security hardening your deployments with OpenID Connect](https://docs.github.com/en/actions/concepts/security/openid-connect) — GitHub
+- [Configure GitHub Actions OIDC to authenticate to Azure](https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure) — Microsoft Learn
+- [`actions/checkout`](https://github.com/actions/checkout) — GitHub (fork-PR checkout behavior)
+
+Background reading: GitHub Security Lab, [Preventing pwn requests](https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/).
 
 ## Troubleshooting
 
@@ -399,7 +413,9 @@ OIDC removes long-lived secrets, but the app registration it authenticates is st
 ## Additional Resources
 
 - **Azure Documentation**: [Configure OpenID Connect in Azure](https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure)
-- **GitHub Documentation**: [Security hardening with OpenID Connect](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect)
+- **GitHub Documentation**: [Security hardening with OpenID Connect](https://docs.github.com/en/actions/concepts/security/openid-connect)
+- **GitHub Documentation**: [Security hardening for GitHub Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions)
+- **GitHub Documentation**: [About Actions policies](https://docs.github.com/en/enterprise-cloud@latest/admin/enforcing-policies/enforcing-policies-for-your-enterprise/actions-policies/about-actions-policies)
 - **azure/login Action**: [GitHub Marketplace](https://github.com/marketplace/actions/azure-login)
 - **README**: See the [Post-Creation Checklist](../README.md#post-creation-checklist) for context on when to configure Azure OIDC
 

@@ -50,7 +50,7 @@ Automates provisioning of infrastructure, application deployment, test execution
 - **Trigger**: Manual (`workflow_dispatch`)
 - **File**: `.github/workflows/e2e-test.yml`
 
-> ⚠️ **Security note**: This workflow authenticates to Azure with privileged credentials. It runs only on manual `workflow_dispatch` by design. Before adding a `pull_request` (and especially `pull_request_target`) trigger, read [Security considerations](docs/azure-oidc-setup.md#security-considerations) — checking out untrusted fork PR code in a privileged workflow is a [pwn request](https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/).
+> ⚠️ **Security note**: This workflow authenticates to Azure with privileged credentials. It runs only on manual `workflow_dispatch` by design. Before adding a `pull_request` (and especially `pull_request_target`) trigger, read [Security considerations](docs/azure-oidc-setup.md#security-considerations) and GitHub's [Security hardening for GitHub Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions) — checking out untrusted fork PR code in a privileged workflow is a "pwn request."
 - **Inputs** (manual trigger):
   - `cleanup` — Run `azd down` after tests (default: `true`)
   - `environment` — azd environment name (default: auto-generated from run ID)
