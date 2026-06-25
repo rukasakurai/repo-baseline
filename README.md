@@ -50,7 +50,7 @@ Automates provisioning of infrastructure, application deployment, test execution
 - **Trigger**: Manual (`workflow_dispatch`)
 - **File**: `.github/workflows/e2e-test.yml`
 
-> ⚠️ **Security note**: This workflow authenticates to Azure with privileged credentials and runs only on manual `workflow_dispatch` by design. A `pull_request` trigger does not expose Azure access to fork pull requests — they receive no secrets or OIDC token by default — but it still runs untrusted fork code on the runner, so treat it accordingly (avoid self-hosted runners, untrusted caches, and unsanitized `${{ github.event.* }}` in `run:` steps). **`pull_request_target`** and **`workflow_run`**, by contrast, run with full secrets and Azure access even for fork PRs; checking out untrusted fork code under those triggers is a "pwn request." Before changing the triggers, read [Security considerations](docs/azure-oidc-setup.md#security-considerations) and GitHub's [Security hardening for GitHub Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions).
+> ⚠️ **Security note**: Keep this on `workflow_dispatch`. Adding a `pull_request_target` or `workflow_run` trigger that checks out fork code runs untrusted code with this workflow's Azure access (a "pwn request"). See [Security considerations](docs/azure-oidc-setup.md#security-considerations) before changing the triggers.
 - **Inputs** (manual trigger):
   - `cleanup` — Run `azd down` after tests (default: `true`)
   - `environment` — azd environment name (default: auto-generated from run ID)

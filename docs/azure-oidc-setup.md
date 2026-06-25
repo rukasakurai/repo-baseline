@@ -152,7 +152,7 @@ Federated credentials establish the trust relationship between GitHub and Azure.
 
 3. **(Optional) Add federated credentials for other branches or environments**:
 
-   > ⚠️ **Security note**: A `pull_request` federated credential is matched only by the `pull_request` event. Fork pull requests don't receive an OIDC token by default, so in practice this credential is exercised by same-repo (maintainer-branch) PRs. It does **not** grant access to `pull_request_target` runs — those authenticate with the base-branch credential instead. The higher-risk path is a privileged `pull_request_target` (or `workflow_run`) workflow that checks out untrusted fork code (a "pwn request"); see [Security considerations](#security-considerations). Add this credential only if you intentionally run Azure-authenticated `pull_request` workflows, and prefer scoping the app registration to a least-privilege role.
+   > ⚠️ **Security note**: This credential is matched only by the `pull_request` event (in practice, same-repo PRs — fork PRs get no OIDC token by default) and does not apply to `pull_request_target`. Add it only if you intentionally run Azure-authenticated `pull_request` workflows; see [Security considerations](#security-considerations).
 
    For pull requests:
    ```bash
@@ -339,25 +339,11 @@ The workflow performs the following checks:
 
 OIDC removes long-lived secrets, but the app registration it authenticates is still a privileged identity. Keep these in mind, especially before wiring Azure-authenticated workflows to pull requests:
 
-- **Least privilege**: Grant the narrowest role and scope the workflows need (prefer Reader, and scope to a resource group rather than the whole subscription). See [Step 3](#step-3-assign-azure-permissions).
-- **Understand PR-trigger privilege**: Fork `pull_request` runs get no repository secrets and no usable OIDC token by default — adding a `pull_request` federated credential does **not** change that (forks lack `id-token: write` unless you explicitly enable write tokens for fork PRs, which is not recommended). Such a credential mainly serves same-repo `pull_request` runs. By contrast, `pull_request_target` and `workflow_run` run in the base-repository context with full secrets and Azure access even for fork PRs — that is the trigger to scrutinize.
-- **Avoid pwn requests**: Do **not** combine `pull_request_target` (or `workflow_run`) with checking out untrusted fork PR code in a privileged workflow — attacker-controlled code would run with this identity's Azure access. Follow GitHub's official [Security hardening for GitHub Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions), the [`pull_request_target` event reference](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_target), and [securely using `pull_request_target`](https://gh.io/securely-using-pull_request_target). As of v7, [`actions/checkout`](https://github.com/actions/checkout) refuses common fork-PR checkouts in these events by default; keep that protection rather than opting out.
+- **Least privilege**: Prefer Reader and the narrowest scope; see [Step 3](#step-3-assign-azure-permissions).
+- **Understand PR-trigger privilege**: Fork `pull_request` runs get no repository secrets and no usable OIDC token by default — adding a `pull_request` federated credential does **not** change that. By contrast, `pull_request_target` and `workflow_run` run in the base-repository context with full secrets and Azure access even for fork PRs — that is the trigger to scrutinize.
+- **Avoid pwn requests**: Do **not** combine `pull_request_target` (or `workflow_run`) with checking out untrusted fork PR code in a privileged workflow — attacker code would run with this identity's Azure access. See [securely using `pull_request_target`](https://gh.io/securely-using-pull_request_target). As of v7, [`actions/checkout`](https://github.com/actions/checkout) refuses common fork-PR checkouts in these events by default; keep that protection.
 - **Restrict who can trigger workflows**: Use [Actions policies / workflow execution protections](https://docs.github.com/en/enterprise-cloud@latest/admin/enforcing-policies/enforcing-policies-for-your-enterprise/actions-policies/about-actions-policies) (org/enterprise rulesets) to limit who can run `workflow_dispatch` and which events are permitted for workflows that hold Azure access.
 - **Use GitHub Environments**: For deploy workflows, gate Azure-authenticated jobs behind a protected Environment with required reviewers, and scope the federated credential to `environment:<name>`.
-
-### Reference documentation
-
-Official guidance (start here):
-
-- [Security hardening for GitHub Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions) — GitHub
-- [Events that trigger workflows: `pull_request_target`](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_target) — GitHub
-- [Securely using `pull_request_target`](https://gh.io/securely-using-pull_request_target) — GitHub
-- [About Actions policies](https://docs.github.com/en/enterprise-cloud@latest/admin/enforcing-policies/enforcing-policies-for-your-enterprise/actions-policies/about-actions-policies) — GitHub
-- [Security hardening your deployments with OpenID Connect](https://docs.github.com/en/actions/concepts/security/openid-connect) — GitHub
-- [Configure GitHub Actions OIDC to authenticate to Azure](https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure) — Microsoft Learn
-- [`actions/checkout`](https://github.com/actions/checkout) — GitHub (fork-PR checkout behavior)
-
-Background reading: GitHub Security Lab, [Preventing pwn requests](https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/).
 
 ## Troubleshooting
 
