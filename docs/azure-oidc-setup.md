@@ -152,8 +152,6 @@ Federated credentials establish the trust relationship between GitHub and Azure.
 
 3. **(Optional) Add federated credentials for other branches or environments**:
 
-   > 💡 A `pull_request`-scoped credential (subject `repo:ORG/REPO:pull_request`) is rarely needed and increases risk — see [Security considerations](#security-considerations). Prefer environment- or branch-scoped credentials like the example below.
-
    For specific environments:
    ```bash
     APP_OBJECT_ID=$(az ad app show --id "$APP_ID" --query id -o tsv)
