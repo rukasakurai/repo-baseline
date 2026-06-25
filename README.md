@@ -21,7 +21,7 @@ This template is intentionally minimal and public-safe, containing no secrets, l
 
 ## Post-Creation Checklist
 
-After creating a repository from this template:
+After creating a repository from this template, the [`repo-setup` Agent Skill](.github/skills/repo-setup/SKILL.md) can walk an AI agent through these steps (including how to discover and install Agent Skills relevant to your stack):
 
 - [ ] **Choose and add a LICENSE file** - This template intentionally omits a license; add one appropriate for your project
 - [ ] **Configure Azure OIDC** (if using Azure) - Set up federated credentials and add the following repository secrets:
@@ -31,7 +31,7 @@ After creating a repository from this template:
   
   See [docs/azure-oidc-setup.md](docs/azure-oidc-setup.md) for detailed setup instructions. Then run the "Azure OIDC Connectivity Check" workflow manually to verify the configuration.
 - [ ] **Enable AI agent Azure access** (if using Azure with Copilot coding agent) - Run `azd coding-agent config` to give AI agents read-time visibility into Azure state while authoring changes. See [docs/azure-coding-agent-guide.md](docs/azure-coding-agent-guide.md) for guidance.
-- [ ] **Install Agent Skills** (optional) - Reusable [Agent Skills](https://agentskills.io) can be installed with [`gh skill install`](https://cli.github.com/manual/gh_skill_install) (GitHub CLI v2.90.0+), e.g. `gh skill install rukasakurai/agent-skills <skill>`.
+- [ ] **Discover and install Agent Skills** (optional) - Find reusable [Agent Skills](https://agentskills.io) relevant to your stack and install them with [`gh skill install`](https://cli.github.com/manual/gh_skill_install) (GitHub CLI v2.90.0+). See the [`repo-setup` skill](.github/skills/repo-setup/SKILL.md#discover-and-install-agent-skills) for where to look and how to vet them.
 - [ ] **Update README.md** - Replace this generic template README with repository-specific documentation
 - [ ] **Review AGENTS.md** - Update or remove this file to reflect your repository's specific purpose and conventions
 
