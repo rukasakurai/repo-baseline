@@ -152,34 +152,7 @@ Federated credentials establish the trust relationship between GitHub and Azure.
 
 3. **(Optional) Add federated credentials for other branches or environments**:
 
-   > ⚠️ **Security note**: This credential is matched only by the `pull_request` event (in practice, same-repo PRs — fork PRs get no OIDC token by default) and does not apply to `pull_request_target`. Add it only if you intentionally run Azure-authenticated `pull_request` workflows; see [Security considerations](#security-considerations).
-
-   For pull requests:
-   ```bash
-    APP_OBJECT_ID=$(az ad app show --id "$APP_ID" --query id -o tsv)
-
-   az ad app federated-credential create \
-       --id "$APP_OBJECT_ID" \
-     --parameters '{
-       "name": "github-pr-credential",
-       "issuer": "https://token.actions.githubusercontent.com",
-       "subject": "repo:'"$GITHUB_ORG"'/'"$GITHUB_REPO"':pull_request",
-       "audiences": ["api://AzureADTokenExchange"]
-     }'
-   ```
-
-    PowerShell:
-    ```powershell
-    $subject = "repo:$env:GITHUB_ORG/$env:GITHUB_REPO:pull_request"
-    $payload = @{
-       name      = "github-pr-credential"
-       issuer    = "https://token.actions.githubusercontent.com"
-       subject   = $subject
-       audiences = @("api://AzureADTokenExchange")
-    } | ConvertTo-Json -Depth 4
-
-      az ad app federated-credential create --id $env:APP_OBJECT_ID --parameters $payload
-    ```
+   > 💡 A `pull_request`-scoped credential (subject `repo:ORG/REPO:pull_request`) is rarely needed and increases risk — see [Security considerations](#security-considerations). Prefer environment- or branch-scoped credentials like the example below.
 
    For specific environments:
    ```bash
