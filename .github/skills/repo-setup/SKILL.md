@@ -33,7 +33,7 @@ Agent Skills are reusable, tool-portable capabilities defined by the [SKILL.md o
 
 ### Where to look (in priority order)
 
-1. **The vendor that owns the technology.** First-party skills are the highest-trust option. Look for official skills published by the maintainers of the language, framework, or platform the repo uses — search `github.com/<vendor>/skills` or the vendor's documentation.
+1. **The vendor that owns the technology.** First-party skills are the highest-trust option. Look for official skills published by the maintainers of the language, framework, or platform the repo uses — search `github.com/<vendor>/skills` or the vendor's documentation. Also consider your own or your organization's curated skills repository (e.g. [`rukasakurai/agent-skills`](https://github.com/rukasakurai/agent-skills)).
 2. **GitHub Copilot's default marketplaces** (pre-registered, no setup): [`github/copilot-plugins`](https://github.com/github/copilot-plugins) (official, GitHub-maintained) and [`github/awesome-copilot`](https://github.com/github/awesome-copilot) (large, community-contributed). See the official guidance on [agent skills](https://docs.github.com/en/copilot/concepts/agents/about-agent-skills) and [plugins](https://docs.github.com/en/copilot/concepts/agents/about-plugins).
 3. **Search across GitHub:** `gh skill search <keyword>` finds `SKILL.md` skills in public repositories (GitHub CLI v2.90.0+).
 
