@@ -31,7 +31,7 @@ After creating a repository from this template:
   
   See [docs/azure-oidc-setup.md](docs/azure-oidc-setup.md) for detailed setup instructions. Then run the "Azure OIDC Connectivity Check" workflow manually to verify the configuration.
 - [ ] **Enable AI agent Azure access** (if using Azure with Copilot coding agent) - Run `azd coding-agent config` to give AI agents read-time visibility into Azure state while authoring changes. See [docs/azure-coding-agent-guide.md](docs/azure-coding-agent-guide.md) for guidance.
-- [ ] **Install agent skills** (optional, per-developer) - Reusable [agent skills](https://agentskills.io) can be installed for your user account with [`gh skill install`](https://cli.github.com/manual/gh_skill_install) (GitHub CLI v2.90.0+), e.g. `gh skill install rukasakurai/agent-skills <skill> --scope user`. This is a personal setup step, not repository configuration.
+- [ ] **Install agent skills** (optional) - Reusable [agent skills](https://agentskills.io) can be installed with [`gh skill install`](https://cli.github.com/manual/gh_skill_install) (GitHub CLI v2.90.0+), e.g. `gh skill install rukasakurai/agent-skills <skill>`.
 - [ ] **Update README.md** - Replace this generic template README with repository-specific documentation
 - [ ] **Review AGENTS.md** - Update or remove this file to reflect your repository's specific purpose and conventions
 
