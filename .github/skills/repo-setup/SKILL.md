@@ -45,9 +45,13 @@ gh skill install <owner/repo> <skill>   # installs into .github/skills/
 ```
 
 - Commit installed skills under `.github/skills/` when they should apply to everyone working in the repository.
-- Pin a version for stability: `gh skill install <owner/repo> <skill>@<version>`.
+- Pin to a reviewed version or commit SHA so later updates can't silently swap in changed content: `gh skill install <owner/repo> <skill>@<version>` (or `--pin`). `gh skill install` records the source repo, ref, and tree SHA in the skill's frontmatter as provenance.
 
-### Notes
+### Security notes
 
-- **Skills are not verified or signed.** Always inspect a skill's contents (especially any `scripts/`) before installing — they can contain prompt injection or executable code.
+Treat a third-party skill as untrusted supply-chain content: its instructions enter the agent's context and its bundled scripts may be executed.
+
+- **Skills are not verified or signed.** Inspect before installing — not just any `scripts/`, but the instruction body too, which can carry hidden or obfuscated prompt-injection directives (e.g. to exfiltrate secrets or run commands).
+- **Do not pre-approve `shell`/`bash`** in a skill's `allowed-tools` unless you have reviewed the skill and its scripts and trust the source — doing so lets a malicious or injected skill run arbitrary commands without confirmation.
+- **Prefer trusted, first-party sources** and the least privilege the task needs.
 - **Installers are interchangeable.** The same skill can be installed with `gh skill install`, with `npx skills add <owner/repo>`, or by placing the skill folder directly in `.github/skills/` (or `.agents/skills/` for cross-tool use). Choose whichever matches the agent in use.
