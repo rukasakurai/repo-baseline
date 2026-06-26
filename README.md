@@ -21,7 +21,7 @@ This template is intentionally minimal and public-safe, containing no secrets, l
 
 ## Post-Creation Checklist
 
-After creating a repository from this template, the [`repo-setup` Agent Skill](.github/skills/repo-setup/SKILL.md) can walk an AI agent through these steps (including how to discover and install Agent Skills relevant to your stack):
+After creating a repository from this template, the [`repo-setup` Agent Skill](.github/skills/repo-setup/SKILL.md) can walk an AI agent through these steps:
 
 - [ ] **Choose and add a LICENSE file** - This template intentionally omits a license; add one appropriate for your project
 - [ ] **Configure Azure OIDC** (if using Azure) - Set up federated credentials and add the following repository secrets:
