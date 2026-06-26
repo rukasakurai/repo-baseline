@@ -5,25 +5,35 @@ description: Use when setting up, initializing, or revisiting a repository creat
 
 # Repo Setup
 
-Work through the steps in order. Treat any authentication, GUI, or portal step as **blocking**: stop and hand back to the user, then continue once they confirm. Keep every change lean and public-safe — never add secrets, tenant/subscription IDs, a license, or technology-specific scaffolding the user has not asked for. See [CONTRIBUTING.md](../../../CONTRIBUTING.md) for the canonical constraints.
+Most steps below are independent — do the ones that apply, in any order. Two real constraints: settle whether the repo uses Azure before configuring Azure, and finalize (the **Wind down the template scaffolding** group) only once the rest is done. Treat any authentication, GUI, or portal step as **blocking**: stop and hand back to the user, then continue once they confirm. Keep every change lean and public-safe — never add secrets, tenant/subscription IDs, a license, or technology-specific scaffolding the user has not asked for. See [CONTRIBUTING.md](../../../CONTRIBUTING.md) for the canonical constraints.
 
 ## First, determine the context
 
 Before doing anything, work out whether you are in **repo-baseline itself** or in a **repository derived from it**. Signals that you are still in the template: the repository or remote is named `repo-baseline`, the `README.md` is still titled `# repo-baseline`, or `AGENTS.md` still describes "a baseline template repository."
 
 - **If this is the template itself:** do not perform setup — there is nothing here to configure. You are most likely maintaining or testing this skill; act on that intent instead.
-- **If this is a derived repository:** proceed with the steps below.
+- **If this is a derived repository:** proceed below.
 
-## Setup steps
+## Bootstrap configuration
 
-1. **Choose a license.** The template omits one intentionally. Add a `LICENSE` file only when the user has chosen a license; do not pick one for them.
-2. **Configure Azure OIDC** (only if the repo uses Azure). Set up federated credentials and the `AZURE_CLIENT_ID` variable plus `AZURE_TENANT_ID` / `AZURE_SUBSCRIPTION_ID` secrets, following [docs/azure-oidc-setup.md](../../../docs/azure-oidc-setup.md). Then have the user run the **Azure OIDC Connectivity Check** workflow to verify.
-3. **Enable AI agent Azure access** (only if using Azure with the Copilot coding agent). Run `azd coding-agent config` to give agents read-time visibility into Azure state. See [docs/azure-coding-agent-guide.md](../../../docs/azure-coding-agent-guide.md).
-4. **Decide on the optional Azure scaffolding.** The template ships Azure-oriented assets — the OIDC, E2E, and azd workflows under `.github/workflows/` and the `docs/azure-*.md` guides. These are optional defaults, not requirements. If the project is not using Azure, raise removing them so the repository stays lean and technology-neutral; confirm with the user before deleting anything.
-5. **Discover and install relevant Agent Skills.** See [Discover and install Agent Skills](#discover-and-install-agent-skills) below.
-6. **Replace the template README.** Swap the generic `README.md` for documentation specific to this repository.
-7. **Review AGENTS.md.** Update or trim [AGENTS.md](../../../AGENTS.md) to reflect this repository's actual purpose and conventions.
-8. **Retire this skill.** In the same spirit as replacing the README and updating AGENTS.md, this `repo-setup` skill is itself bootstrap scaffolding. Once setup is complete, offer to remove it (the `.github/skills/repo-setup/` directory) and the Post-Creation Checklist from the README; it exists to start a repository, not to live in it.
+One-time choices for a new repository. Apply those that fit.
+
+- **Choose a license.** The template omits one intentionally. Add a `LICENSE` file only when the user has chosen a license; do not pick one for them.
+- **Decide whether the repo uses Azure.** If it does not, raise removing the Azure-oriented scaffolding — the OIDC, E2E, and azd workflows under `.github/workflows/` and the `docs/azure-*.md` guides — so the repository stays lean and technology-neutral; confirm with the user before deleting anything. If it does, continue with the next two items.
+- **Configure Azure OIDC** (Azure only). Set up federated credentials and the `AZURE_CLIENT_ID` variable plus `AZURE_TENANT_ID` / `AZURE_SUBSCRIPTION_ID` secrets, following [docs/azure-oidc-setup.md](../../../docs/azure-oidc-setup.md). Then have the user run the **Azure OIDC Connectivity Check** workflow to verify.
+- **Enable AI agent Azure access** (Azure only). Run `azd coding-agent config` to give agents read-time visibility into Azure state. See [docs/azure-coding-agent-guide.md](../../../docs/azure-coding-agent-guide.md).
+
+## Equip agents with relevant skills
+
+Not a one-time step — most valuable once the repository has a real technology stack, and worth repeating over time as new skills appear. See [Discover and install Agent Skills](#discover-and-install-agent-skills) below.
+
+## Wind down the template scaffolding
+
+Do these last: each removes part of what this skill relies on — its entry point, its detection signals, or the skill itself.
+
+- **Replace the template README.** Swap the generic `README.md` (including its Post-Creation Checklist) for documentation specific to this repository.
+- **Review AGENTS.md.** Update or trim [AGENTS.md](../../../AGENTS.md) to reflect this repository's actual purpose and conventions.
+- **Retire this skill.** This `repo-setup` skill is itself bootstrap scaffolding. Once setup is complete, offer to remove it (the `.github/skills/repo-setup/` directory); it exists to start a repository, not to live in it. Keep it only if the user wants to revisit skill discovery periodically.
 
 ## Discover and install Agent Skills
 
