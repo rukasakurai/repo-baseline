@@ -9,7 +9,7 @@ This is a **baseline template repository** designed to provide a minimal, reusab
 
 ## Working Style
 
-**Simplicity.** Verbosity and complexity are harmful by default; deleting and simplifying almost always adds value. When asked to fix, prefer fixing in place over adding. Before producing output, ask: "what can I cut?"
+**Simplicity.** Verbosity and complexity are harmful by default; deleting and simplifying almost always adds value. When asked to fix, prefer fixing in place over adding. Before finalizing, ask: "what can I cut?"
 
 ## Azure Access
 
