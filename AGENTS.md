@@ -9,7 +9,7 @@ This is a **baseline template repository** designed to provide a minimal, reusab
 
 ## Working Style
 
-**Simplicity.** Verbosity and complexity are harmful by default; deleting and simplifying almost always adds value. When asked to fix, fix in place — do NOT add new columns, rows, sections, rules, caveats, hedges, or "just in case" qualifications unless the user explicitly asked. Before producing output, ask: "what can I cut?"
+**Simplicity.** Verbosity and complexity are harmful by default; deleting and simplifying almost always adds value. When asked to fix, prefer fixing in place over adding. Before producing output, ask: "what can I cut?"
 
 ## Azure Access
 
