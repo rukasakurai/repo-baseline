@@ -1,6 +1,6 @@
 ---
 name: repo-setup
-description: Use when setting up or initializing a repository created from the repo-baseline template (prompts like "set up this repo", "finish the post-creation checklist", or "what should I configure now?"). Guides choosing a license, configuring Azure OIDC, enabling AI agent Azure access, discovering and installing Agent Skills relevant to the repository's technology stack, and replacing the template documentation. Do not use for general feature work in an already-configured repository.
+description: Use when setting up or initializing a repository created from the repo-baseline template (prompts like "set up this repo", "finish the post-creation checklist", or "what should I configure now?"). Guides choosing a license, configuring Azure OIDC, enabling AI agent Azure access, discovering and installing Agent Skills relevant to the repository's technology stack, and replacing the template documentation.
 ---
 
 # Repo Setup
